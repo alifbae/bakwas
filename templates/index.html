@@ -1,5 +1,5 @@
-{% extends "base.html" %} {% block title %}Bakwas - YouTube Video Summarizer{% endblock %} {% block
-content %}
+{% extends "base.html" %} {% block title %}<s>Bakwas</s> - YouTube Video Summarizer{% endblock %} {%
+block content %}
 <main class="container">
   <header class="page-header">
     <img
@@ -8,7 +8,7 @@ content %}
       class="hero-logo"
     />
     <h1>
-      Bakwas
+      <s>Bakwas</s>
       <a
         href="https://www.rekhta.org/urdudictionary?keyword=%E0%A4%AC%E0%A4%95%E0%A4%B5%E0%A4%BE%E0%A4%B8"
         target="_blank"
@@ -37,7 +37,7 @@ content %}
   </section>
 
   <section>
-    <h2>Previous Summaries ({{ summaries|length }})</h2>
+    <h4>Previous Summaries ({{ summaries|length }})</h4>
 
     {% if summaries %}
     <figure>

@@ -331,10 +331,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Disclaimer
 
 AI-generated summaries may contain inaccuracies. Always verify important information from the original source.
-
-## Acknowledgments
-
-- Built with [Flask](https://flask.palletsprojects.com/)
-- UI powered by [Pico CSS](https://picocss.com/)
-- Summaries by [Anthropic Claude](https://www.anthropic.com/)
-- YouTube extraction via [yt-dlp](https://github.com/yt-dlp/yt-dlp)
