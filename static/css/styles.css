@@ -1,0 +1,329 @@
+/* Minimal custom styles for Bakwas with Pico.css */
+
+/* Global font styling */
+:root {
+  --pico-font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Solarized Light Theme */
+[data-theme="light"] {
+  /* Base colors */
+  --pico-background-color: #fdf6e3;
+  --pico-color: #657b83;
+
+  /* Secondary colors */
+  --pico-secondary-background: #eee8d5;
+  --pico-muted-color: #93a1a1;
+  --pico-muted-border-color: #eee8d5;
+
+  /* Primary accent (blue) */
+  --pico-primary: #268bd2;
+  --pico-primary-hover: #2aa198;
+  --pico-primary-focus: rgba(38, 139, 210, 0.125);
+  --pico-primary-inverse: #fdf6e3;
+
+  /* Secondary accent */
+  --pico-secondary: #859900;
+  --pico-secondary-hover: #b58900;
+  --pico-secondary-focus: rgba(133, 153, 0, 0.125);
+  --pico-secondary-inverse: #fdf6e3;
+
+  /* Contrast colors */
+  --pico-contrast: #586e75;
+  --pico-contrast-hover: #073642;
+  --pico-contrast-focus: rgba(88, 110, 117, 0.125);
+  --pico-contrast-inverse: #fdf6e3;
+
+  /* Form elements */
+  --pico-form-element-background-color: #eee8d5;
+  --pico-form-element-border-color: #d3cbb7;
+  --pico-form-element-color: #657b83;
+  --pico-form-element-placeholder-color: #93a1a1;
+
+  /* Code/pre blocks */
+  --pico-code-background-color: #eee8d5;
+  --pico-code-color: #586e75;
+
+  /* Tables */
+  --pico-table-border-color: #d3cbb7;
+  --pico-table-row-stripped-background-color: #f7f1e0;
+
+  /* Cards/Articles */
+  --pico-card-background-color: #eee8d5;
+  --pico-card-border-color: #d3cbb7;
+  --pico-card-box-shadow: 0 0 2px rgba(101, 123, 131, 0.1), 0 2px 4px rgba(101, 123, 131, 0.1);
+
+  /* Borders */
+  --pico-border-color: #d3cbb7;
+
+  /* Links */
+  --pico-text-selection-color: rgba(42, 161, 152, 0.25);
+
+  /* Switch/Toggle colors */
+  --pico-switch-background-color: #d3cbb7;
+  --pico-switch-checked-background-color: #268bd2;
+
+  /* Mark/Highlight */
+  --pico-mark-background-color: #b58900;
+  --pico-mark-color: #fdf6e3;
+
+  /* Inserted/Deleted text */
+  --pico-ins-color: #859900;
+  --pico-del-color: #dc322f;
+}
+
+body {
+  font-family: var(--pico-font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+main {
+  flex: 1;
+}
+
+/* Navigation separator */
+nav {
+  border-bottom: 1px solid var(--pico-muted-border-color);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Brand styling */
+.brand {
+  text-decoration: none;
+  color: var(--pico-primary) !important;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brand:hover {
+  text-decoration: none;
+  opacity: 0.8;
+}
+
+/* Navigation logo */
+.nav-logo {
+  height: 32px;
+  width: 32px;
+  object-fit: contain;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  min-width: auto;
+  padding: 0.5rem 1rem;
+  margin-bottom: 0;
+}
+
+.theme-toggle:focus,
+.theme-toggle:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: var(--pico-muted-border-color) !important;
+}
+
+/* Remove default button focus outline */
+button:focus,
+button:focus-visible,
+button:active,
+a:focus,
+a:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove borders from all buttons */
+button,
+[type="button"],
+[type="submit"],
+[type="reset"],
+[role="button"] {
+  border: none !important;
+}
+
+.theme-icon {
+  font-size: 1.2em;
+}
+
+/* Page header centering */
+.page-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.page-header h1 {
+  margin-bottom: 0.5rem;
+}
+
+.page-header p {
+  color: var(--pico-muted-color);
+}
+
+/* Hero logo */
+.hero-logo {
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+  margin: 0 auto 1rem;
+  display: block;
+  border-radius: 20%;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+  transition:
+    transform 0.3s ease,
+    filter 0.3s ease;
+}
+
+.hero-logo:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4));
+}
+
+/* Form grid layout */
+#summaryForm .grid {
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 0.5rem;
+}
+
+/* Small button for table actions */
+button.small {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+}
+
+button.icon-only {
+  min-width: auto;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Detail page header actions */
+.detail-header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.detail-header-actions button {
+  margin: 0;
+}
+
+/* Transcript styling */
+.transcript {
+  max-height: 500px;
+  overflow-y: auto;
+  background-color: var(--pico-code-background-color);
+  padding: 1rem;
+  border-radius: var(--pico-border-radius);
+  font-family: monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin-top: 1rem;
+}
+
+/* Detail page header with regenerate button */
+article header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+article header h2 {
+  margin: 0;
+  border: none;
+  padding: 0;
+}
+
+article header button {
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* Markdown content enhancements */
+.markdown-content {
+  line-height: 1.8;
+}
+
+.markdown-content strong {
+  color: var(--pico-contrast);
+  font-weight: 600;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin: 1rem 0;
+  padding-left: 2rem;
+}
+
+.markdown-content li {
+  margin: 0.5rem 0;
+}
+
+/* Footer styling - matches nav bar style but more compact */
+footer.container-fluid {
+  margin-top: 0;
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--pico-muted-border-color);
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+footer .footer-left small {
+  color: var(--pico-muted-color);
+}
+
+footer .footer-right {
+  text-align: right;
+}
+
+footer .footer-right small {
+  color: var(--pico-muted-color);
+}
+
+footer a {
+  color: var(--pico-primary);
+  text-decoration: none;
+}
+
+footer a:hover {
+  text-decoration: underline;
+  opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+  footer.container-fluid {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  footer .footer-right {
+    text-align: center;
+  }
+}
+
+/* Table responsive improvements */
+@media (max-width: 768px) {
+  #summaryForm .grid {
+    grid-template-columns: 1fr;
+  }
+
+  table {
+    font-size: 0.875rem;
+  }
+
+  th,
+  td {
+    padding: 0.5rem;
+  }
+}

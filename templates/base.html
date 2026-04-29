@@ -1,0 +1,72 @@
+<!doctype html>
+<html data-theme="dark">
+  <head>
+    <title>{% block title %}Bakwas{% endblock %}</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='img/zoned-out-cat.png') }}"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}?v={{ range(1, 10000) | random }}"
+    />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    {% block extra_head %}{% endblock %}
+  </head>
+  <body>
+    <nav class="container-fluid">
+      <ul>
+        <li>
+          <strong>
+            <a href="{{ url_for('index') }}" class="brand">
+              <img
+                src="{{ url_for('static', filename='img/zoned-out-cat.png') }}"
+                alt="Bakwas"
+                class="nav-logo"
+              />
+              Bakwas
+            </a>
+          </strong>
+        </li>
+      </ul>
+      <ul>
+        <li>
+          <button class="theme-toggle outline" onclick="toggleTheme()" title="Toggle Theme">
+            <span class="theme-icon">☼</span>
+          </button>
+        </li>
+      </ul>
+    </nav>
+
+    {% block content %}{% endblock %}
+
+    <footer class="container-fluid">
+      <div class="footer-left">
+        <small>⚠️ AI summaries may contain inaccuracies</small>
+      </div>
+      <div class="footer-right">
+        <small
+          >© 2026 <a href="https://github.com/alifbae" target="_blank">alifbae</a> •
+          <a href="https://github.com/alifbae/bakwas/blob/main/LICENSE" target="_blank"
+            >MIT</a
+          ></small
+        >
+      </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/datetime.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+  </body>
+</html>

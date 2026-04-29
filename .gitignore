@@ -24,3 +24,11 @@ wheels/
 *.egg
 .vscode/
 .idea/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Pre-commit cache
+.cache/

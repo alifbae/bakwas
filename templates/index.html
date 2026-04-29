@@ -1,83 +1,173 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>YouTube Summarizer</title>
-    <style>
-        body {
-            font-family: monospace;
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 20px;
-            background: #1a1a1a;
-            color: #e0e0e0;
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            background: #2a2a2a;
-            border: 1px solid #444;
-            color: #e0e0e0;
-            font-family: monospace;
-        }
-        button {
-            padding: 12px 24px;
-            background: #444;
-            border: none;
-            color: #e0e0e0;
-            cursor: pointer;
-            font-family: monospace;
-        }
-        button:hover { background: #555; }
-        #result {
-            margin-top: 20px;
-            padding: 20px;
-            background: #2a2a2a;
-            border: 1px solid #444;
-            white-space: pre-wrap;
-        }
-        .loading { color: #888; }
-        .error { color: #ff6b6b; }
-    </style>
-</head>
-<body>
-    <h1>YouTube Video Summarizer</h1>
+{% extends "base.html" %} {% block title %}Bakwas - YouTube Video Summarizer{% endblock %} {% block
+content %}
+<main class="container">
+  <header class="page-header">
+    <img
+      src="{{ url_for('static', filename='img/zoned-out-cat.png') }}"
+      alt="Bakwas Cat"
+      class="hero-logo"
+    />
+    <h1>
+      Bakwas
+      <a
+        href="https://www.rekhta.org/urdudictionary?keyword=%E0%A4%AC%E0%A4%95%E0%A4%B5%E0%A4%BE%E0%A4%B8"
+        target="_blank"
+        ><small style="font-size: 0.5em; color: #888">بکواس</small></a
+      >
+    </h1>
+    <p>Skip the bakwas, summarize YouTube video transcripts with AI</p>
+  </header>
 
+  <section>
     <form id="summaryForm">
-        <input type="text" id="url" placeholder="Paste YouTube URL" required>
+      <div class="grid">
+        <input type="text" id="url" placeholder="Paste YouTube URL" required />
+        <select id="model" name="model" required>
+          <option value="">Loading models...</option>
+        </select>
+        <select id="length" name="length" required>
+          <option value="concise">Concise (Bullet Points)</option>
+          <option value="comprehensive" selected>Comprehensive</option>
+        </select>
         <button type="submit">Summarize</button>
+      </div>
     </form>
 
-    <div id="result"></div>
+    <article id="result" style="display: none; margin-top: 1rem"></article>
+  </section>
 
-    <script>
-        const form = document.getElementById('summaryForm');
-        const resultDiv = document.getElementById('result');
+  <section>
+    <h2>Previous Summaries ({{ summaries|length }})</h2>
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
+    {% if summaries %}
+    <figure>
+      <table role="grid">
+        <thead>
+          <tr>
+            <th>Video</th>
+            <th>Creator</th>
+            <th>Date</th>
+            <th>Length</th>
+            <th>Model</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for summary in summaries %}
+          <tr>
+            <td>
+              <a href="{{ url_for('view_summary', summary_id=summary.id) }}">
+                <strong>{{ summary.title or 'Untitled' }}</strong>
+              </a>
+              <br /><small>{{ summary.summary_preview }}...</small>
+            </td>
+            <td><small>{{ summary.creator or 'Unknown' }}</small></td>
+            <td><small>{{ summary.video_date or 'N/A' }}</small></td>
+            <td><kbd>{{ summary.summary_length or 'shortest' }}</kbd></td>
+            <td><small>{{ (summary.model_used or 'N/A').split('/')[-1] }}</small></td>
+            <td>
+              <small data-utc-time="{{ summary.created_at }}">{{ summary.created_at }}</small>
+            </td>
+            <td>
+              <form
+                method="POST"
+                action="{{ url_for('delete_summary_route', summary_id=summary.id) }}"
+                style="display: inline"
+                onsubmit="return confirm('Delete this summary?');"
+              >
+                <button type="submit" class="secondary outline small icon-only" title="Delete">
+                  ⌫
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </figure>
+    {% else %}
+    <p><em>No summaries yet. Create one above!</em></p>
+    {% endif %}
+  </section>
+</main>
+{% endblock %} {% block extra_scripts %}
+<script>
+  $(document).ready(function () {
+    // Load available models
+    function loadModels() {
+      $.ajax({
+        url: "/models",
+        method: "GET",
+        success: function (data) {
+          const $modelSelect = $("#model");
+          $modelSelect.empty();
 
-            const url = document.getElementById('url').value;
-            resultDiv.innerHTML = '<span class="loading">Extracting captions and summarizing...</span>';
+          $.each(data.models, function (index, model) {
+            const $option = $("<option>").val(model.id).text(model.name);
 
-            try {
-                const response = await fetch('/summarize', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: `url=${encodeURIComponent(url)}`
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    resultDiv.innerHTML = `<strong>Summary:</strong>\n\n${data.summary}\n\n<small>(${data.caption_length} chars extracted)</small>`;
-                } else {
-                    resultDiv.innerHTML = `<span class="error">Error: ${data.error}</span>`;
-                }
-            } catch (err) {
-                resultDiv.innerHTML = `<span class="error">Error: ${err.message}</span>`;
+            if (model.default) {
+              $option.prop("selected", true);
             }
-        });
-    </script>
-</body>
-</html>
+
+            $modelSelect.append($option);
+          });
+        },
+        error: function () {
+          $("#model").html('<option value="">Error loading models</option>');
+        },
+      });
+    }
+
+    loadModels();
+
+    // Form submission
+    $("#summaryForm").on("submit", function (e) {
+      e.preventDefault();
+
+      const url = $("#url").val();
+      const model = $("#model").val();
+      const length = $("#length").val();
+      const $resultDiv = $("#result");
+
+      $resultDiv.show().html('<p aria-busy="true">Extracting captions and summarizing...</p>');
+
+      $.ajax({
+        url: "/summarize",
+        method: "POST",
+        data: {
+          url: url,
+          model: model,
+          length: length,
+        },
+        success: function (data) {
+          const summaryHtml = marked.parse(data.summary);
+          const modelName = data.model_used.split("/")[1];
+
+          // Build the result HTML safely
+          const $header = $("<header>").html(`
+                        <strong>Video:</strong> ${data.title}<br>
+                        <strong>Creator:</strong> ${data.creator}<br>
+                        <strong>Date:</strong> ${data.video_date}<br>
+                        <strong>Length:</strong> <kbd>${data.summary_length}</kbd>
+                        <strong>Model:</strong> <small>${modelName}</small>
+                    `);
+
+          const $content = $('<div class="markdown-content">').html(summaryHtml);
+
+          const $footer = $("<footer>").html(`
+                        <small>${data.caption_length} words extracted • Saved to database</small><br>
+                        <small><em>Refresh page to see in table below</em></small>
+                    `);
+
+          $resultDiv.empty().append($header).append($content).append($footer);
+        },
+        error: function (xhr) {
+          const error = xhr.responseJSON ? xhr.responseJSON.error : "Unknown error";
+          $resultDiv.html(`<p><mark>Error: ${error}</mark></p>`);
+        },
+      });
+    });
+  });
+</script>
+{% endblock %}

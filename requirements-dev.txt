@@ -1,0 +1,14 @@
+# Development dependencies
+# Install with: pip install -r requirements-dev.txt
+
+# Pre-commit hooks
+pre-commit>=3.6.0
+
+# Python code formatting
+black>=24.3.0
+
+# Python linting
+flake8>=7.0.0
+
+# Python import sorting
+isort>=5.13.2
