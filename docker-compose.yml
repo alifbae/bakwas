@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  bakwas:
+    build: .
+    container_name: bakwas-app
+    ports:
+      - "${PORT:-5000}:${PORT:-5000}"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - PORT=${PORT:-5000}
+    env_file:
+      - .env
+    volumes:
+      # Mount source code for local development
+      # Comment out these lines for production deployment
+      - ./app.py:/app/app.py
+      - ./templates:/app/templates
+    restart: unless-stopped

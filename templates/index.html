@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube Summarizer</title>
+    <style>
+        body {
+            font-family: monospace;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            font-family: monospace;
+        }
+        button {
+            padding: 12px 24px;
+            background: #444;
+            border: none;
+            color: #e0e0e0;
+            cursor: pointer;
+            font-family: monospace;
+        }
+        button:hover { background: #555; }
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            white-space: pre-wrap;
+        }
+        .loading { color: #888; }
+        .error { color: #ff6b6b; }
+    </style>
+</head>
+<body>
+    <h1>YouTube Video Summarizer</h1>
+
+    <form id="summaryForm">
+        <input type="text" id="url" placeholder="Paste YouTube URL" required>
+        <button type="submit">Summarize</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        const form = document.getElementById('summaryForm');
+        const resultDiv = document.getElementById('result');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const url = document.getElementById('url').value;
+            resultDiv.innerHTML = '<span class="loading">Extracting captions and summarizing...</span>';
+
+            try {
+                const response = await fetch('/summarize', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: `url=${encodeURIComponent(url)}`
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `<strong>Summary:</strong>\n\n${data.summary}\n\n<small>(${data.caption_length} chars extracted)</small>`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">Error: ${data.error}</span>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<span class="error">Error: ${err.message}</span>`;
+            }
+        });
+    </script>
+</body>
+</html>
