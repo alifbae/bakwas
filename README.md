@@ -77,7 +77,7 @@ Compose auto-loads `.env` from the project directory, so values flow into the co
 
 ### Running locally without Docker
 
-Requires Python 3.12 or newer.
+Requires Python 3.12 or newer. Local dev runs Flask's built-in Werkzeug server with hot reload. The Docker image runs Gunicorn for production.
 
 ```bash
 python -m venv .venv

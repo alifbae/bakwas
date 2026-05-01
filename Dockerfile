@@ -30,5 +30,19 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
-# Run the application
-CMD ["python", "run.py"]
+# Run the application under Gunicorn for production.
+# Configuration rationale:
+#   - workers 2: enough for a self-hosted app; bump if you need more concurrency.
+#   - threads 4: threaded workers handle blocking LLM/yt-dlp calls well.
+#   - worker-class gthread: pairs with the threaded model above.
+#   - timeout 120: LLM summaries can take ~60s; default 30s would kill them.
+#   - access/error log `-`: write to stdout/stderr so `docker logs` shows them.
+CMD ["gunicorn", \
+     "--bind", "0.0.0.0:5000", \
+     "--workers", "2", \
+     "--threads", "4", \
+     "--worker-class", "gthread", \
+     "--timeout", "120", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "src.app:app"]
