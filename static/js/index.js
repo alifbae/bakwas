@@ -1,6 +1,13 @@
 // Homepage: model loading, default preferences, and summary form submission.
 // Depends on jQuery, marked, and preferences.js (getDefaultModel / getDefaultLength).
 
+function formatCostSuffix(data) {
+  if (data.cost_usd === null || data.cost_usd === undefined) return "";
+  const cost = Number(data.cost_usd);
+  if (!Number.isFinite(cost)) return "";
+  return ` • cost $${cost.toFixed(4)}`;
+}
+
 $(document).ready(function () {
   // Load available models
   function loadModels() {
@@ -77,7 +84,7 @@ $(document).ready(function () {
         const $content = $('<div class="markdown-content">').html(summaryHtml);
 
         const $footer = $("<footer>").html(`
-                      <small>${data.caption_length} words extracted • ${data.cached ? 'Loaded from cache' : 'Saved to database'}</small><br>
+                      <small>${data.caption_length} words extracted • ${data.cached ? 'Loaded from cache' : 'Saved to database'}${formatCostSuffix(data)}</small><br>
                       <small><em>Refresh page to see in table below</em></small>
                   `);
 

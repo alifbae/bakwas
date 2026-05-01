@@ -658,3 +658,87 @@ nav ul:last-of-type li {
 .footer-icon-link .icon {
   display: block;
 }
+
+/* 404 / error page */
+.error-page {
+  text-align: center;
+  padding-top: 3rem;
+}
+
+.error-page .hero-logo {
+  width: 140px;
+  height: 140px;
+}
+
+.hero-logo--flipped {
+  transform: rotate(180deg);
+}
+
+.hero-logo--flipped:hover {
+  transform: rotate(180deg) scale(1.05);
+}
+
+.error-code {
+  font-size: 4rem;
+  font-weight: 700;
+  line-height: 1;
+  margin: 0.5rem 0 0.25rem;
+  color: var(--pico-primary);
+  letter-spacing: -0.05em;
+}
+
+.error-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.5rem;
+}
+
+.error-message {
+  max-width: 32rem;
+  margin: 0 auto 2rem;
+  color: var(--pico-muted-color);
+}
+
+.error-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* Settings modal stats section */
+.prefs-stats {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--pico-muted-border-color);
+}
+
+.prefs-stats h4 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  color: var(--pico-muted-color);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.prefs-stats__grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0;
+}
+
+.prefs-stats__grid dt {
+  font-weight: 500;
+  color: var(--pico-muted-color);
+}
+
+.prefs-stats__grid dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.prefs-stats__note {
+  display: block;
+  margin-top: 0.75rem;
+  color: var(--pico-muted-color);
+}

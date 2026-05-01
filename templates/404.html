@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Page not found - Bakwas{% endblock %}
+{% block content %}
+<main class="container error-page">
+  <img
+    src="{{ url_for('static', filename='img/zoned-out-cat.png') }}"
+    alt="Bakwas Cat"
+    class="hero-logo hero-logo--flipped"
+  />
+  <h1 class="error-code">404</h1>
+  <h2 class="error-title">{{ error_title or 'Page not found' }}</h2>
+  <div class="error-actions">
+    <a href="{{ url_for('index') }}" role="button" class="primary">Back to home</a>
+  </div>
+</main>
+{% endblock %}

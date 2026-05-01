@@ -38,6 +38,9 @@ def init_db():
                 summary TEXT NOT NULL,
                 model_used TEXT,
                 summary_length TEXT DEFAULT 'shortest',
+                prompt_tokens INTEGER,
+                completion_tokens INTEGER,
+                cost_usd REAL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """
@@ -51,6 +54,19 @@ def init_db():
         except:
             pass  # Column already exists
 
+        # Token and cost tracking columns added in a later revision; add them
+        # to pre-existing databases one by one (SQLite doesn't support
+        # IF NOT EXISTS on ALTER TABLE ADD COLUMN).
+        for ddl in (
+            "ALTER TABLE summaries ADD COLUMN prompt_tokens INTEGER",
+            "ALTER TABLE summaries ADD COLUMN completion_tokens INTEGER",
+            "ALTER TABLE summaries ADD COLUMN cost_usd REAL",
+        ):
+            try:
+                conn.execute(ddl)
+            except Exception:
+                pass  # Column already exists
+
 
 def save_summary(
     url,
@@ -61,13 +77,19 @@ def save_summary(
     summary,
     model_used,
     summary_length="shortest",
+    prompt_tokens=None,
+    completion_tokens=None,
+    cost_usd=None,
 ):
     """Save or update a summary in the database"""
     with get_db() as conn:
         conn.execute(
             """
-            INSERT INTO summaries (url, title, creator, video_date, subtitles, summary, model_used, summary_length)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO summaries (
+                url, title, creator, video_date, subtitles, summary,
+                model_used, summary_length, prompt_tokens, completion_tokens, cost_usd
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(url) DO UPDATE SET
                 title = excluded.title,
                 creator = excluded.creator,
@@ -76,6 +98,9 @@ def save_summary(
                 summary = excluded.summary,
                 model_used = excluded.model_used,
                 summary_length = excluded.summary_length,
+                prompt_tokens = excluded.prompt_tokens,
+                completion_tokens = excluded.completion_tokens,
+                cost_usd = excluded.cost_usd,
                 created_at = CURRENT_TIMESTAMP
         """,
             (
@@ -87,6 +112,9 @@ def save_summary(
                 summary,
                 model_used,
                 summary_length,
+                prompt_tokens,
+                completion_tokens,
+                cost_usd,
             ),
         )
 
@@ -201,6 +229,38 @@ def get_cached_summary(url, model_used, summary_length):
         )
         row = cursor.fetchone()
         return dict(row) if row else None
+
+
+def get_cost_stats():
+    """
+    Return aggregate cost/token stats across all summaries.
+
+    Returns a dict with:
+        total_summaries:            total rows
+        priced_summaries:           rows that have a cost_usd value
+        total_cost_usd:             sum of cost_usd (float, 0.0 if none)
+        total_prompt_tokens:        sum of prompt_tokens
+        total_completion_tokens:    sum of completion_tokens
+    """
+    with get_db() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                COUNT(*)                                   AS total_summaries,
+                SUM(CASE WHEN cost_usd IS NOT NULL THEN 1 ELSE 0 END) AS priced_summaries,
+                COALESCE(SUM(cost_usd), 0.0)               AS total_cost_usd,
+                COALESCE(SUM(prompt_tokens), 0)            AS total_prompt_tokens,
+                COALESCE(SUM(completion_tokens), 0)        AS total_completion_tokens
+            FROM summaries
+            """
+        ).fetchone()
+        return {
+            "total_summaries": int(row["total_summaries"] or 0),
+            "priced_summaries": int(row["priced_summaries"] or 0),
+            "total_cost_usd": float(row["total_cost_usd"] or 0.0),
+            "total_prompt_tokens": int(row["total_prompt_tokens"] or 0),
+            "total_completion_tokens": int(row["total_completion_tokens"] or 0),
+        }
 
 
 def delete_summary(summary_id):

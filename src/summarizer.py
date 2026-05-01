@@ -6,7 +6,7 @@ via config/providers.yaml (see src/providers.py).
 """
 
 import litellm
-from litellm import completion
+from litellm import completion, completion_cost
 
 from src.providers import Provider, resolve
 
@@ -60,8 +60,47 @@ def _completion_kwargs_for(model: str) -> dict:
     return kwargs
 
 
+def _extract_usage(response) -> tuple[int | None, int | None]:
+    """Return (prompt_tokens, completion_tokens) from a LiteLLM response, or (None, None)."""
+    usage = getattr(response, "usage", None)
+    if not usage:
+        return None, None
+    # LiteLLM may expose usage as an object or a dict depending on the provider.
+    prompt = getattr(usage, "prompt_tokens", None)
+    completion_tokens = getattr(usage, "completion_tokens", None)
+    if prompt is None and isinstance(usage, dict):
+        prompt = usage.get("prompt_tokens")
+        completion_tokens = usage.get("completion_tokens")
+    return prompt, completion_tokens
+
+
+def _extract_cost(response) -> float | None:
+    """Return the USD cost of a completion, or None when the provider/model isn't priced."""
+    # Prefer the already-computed value if LiteLLM attached one.
+    hidden = getattr(response, "_hidden_params", None) or {}
+    cost = hidden.get("response_cost") if isinstance(hidden, dict) else None
+    if cost is not None:
+        try:
+            return float(cost)
+        except (TypeError, ValueError):
+            pass
+
+    # Fall back to asking LiteLLM to compute it.
+    try:
+        computed = completion_cost(completion_response=response)
+        return float(computed) if computed is not None else None
+    except Exception:
+        return None
+
+
 def summarize_text(text, model, length="comprehensive"):
-    """Send the transcript to the configured LLM and return the summary."""
+    """
+    Send the transcript to the configured LLM and return a dict with:
+        summary           - the generated text
+        prompt_tokens     - input tokens (int or None)
+        completion_tokens - output tokens (int or None)
+        cost_usd          - USD cost per LiteLLM pricing (float or None)
+    """
     if not model:
         raise ValueError("A model id is required. Configure providers in config/providers.yaml.")
 
@@ -84,7 +123,16 @@ def summarize_text(text, model, length="comprehensive"):
         ):
             raise Exception("API response structure is invalid")
 
-        return response.choices[0].message.content
+        summary_text = response.choices[0].message.content
+        prompt_tokens, completion_tokens = _extract_usage(response)
+        cost_usd = _extract_cost(response)
+
+        return {
+            "summary": summary_text,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "cost_usd": cost_usd,
+        }
 
     except Exception as exc:
         error_msg = f"LLM API Error: {exc}"

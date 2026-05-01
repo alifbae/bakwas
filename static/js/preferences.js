@@ -97,10 +97,64 @@ function loadSettingsItemsPerPage() {
   }
 }
 
+function formatUsd(n) {
+  if (n === null || n === undefined || !Number.isFinite(Number(n))) return "—";
+  const v = Number(n);
+  // Show more precision when the total is small (<$1) so rounding isn't confusing.
+  return v >= 1 ? `$${v.toFixed(2)}` : `$${v.toFixed(4)}`;
+}
+
+function formatCount(n) {
+  if (n === null || n === undefined) return "—";
+  return Number(n).toLocaleString();
+}
+
+function loadSettingsStats() {
+  $("#stats-total-cost").text("…");
+  $("#stats-total-summaries").text("…");
+  $("#stats-total-tokens").text("…");
+  $("#stats-priced-note").text("");
+
+  $.ajax({
+    url: "/stats",
+    method: "GET",
+    success: function (data) {
+      $("#stats-total-cost").text(formatUsd(data.total_cost_usd));
+      $("#stats-total-summaries").text(formatCount(data.total_summaries));
+      const tokens =
+        (Number(data.total_prompt_tokens) || 0) +
+        (Number(data.total_completion_tokens) || 0);
+      $("#stats-total-tokens").text(
+        tokens
+          ? `${formatCount(tokens)} (${formatCount(data.total_prompt_tokens)} in / ${formatCount(data.total_completion_tokens)} out)`
+          : "—"
+      );
+
+      const priced = Number(data.priced_summaries) || 0;
+      const total = Number(data.total_summaries) || 0;
+      if (total > 0 && priced < total) {
+        const missing = total - priced;
+        $("#stats-priced-note").text(
+          `${formatCount(missing)} summar${missing === 1 ? "y has" : "ies have"} no cost data (e.g. generated before tracking was added or via an unpriced provider).`
+        );
+      } else {
+        $("#stats-priced-note").text("");
+      }
+    },
+    error: function () {
+      $("#stats-total-cost").text("—");
+      $("#stats-total-summaries").text("—");
+      $("#stats-total-tokens").text("—");
+      $("#stats-priced-note").text("Failed to load usage stats.");
+    },
+  });
+}
+
 function openSettings() {
   loadSettingsModels();
   loadSettingsLength();
   loadSettingsItemsPerPage();
+  loadSettingsStats();
   openModal("settings-dialog");
 }
 

@@ -19,6 +19,7 @@ from src.database import (
     delete_summary,
     get_all_summaries,
     get_cached_summary,
+    get_cost_stats,
     get_summary_by_id,
     init_db,
     save_summary,
@@ -200,6 +201,12 @@ def get_models():
     return jsonify({"models": AVAILABLE_MODELS})
 
 
+@app.route("/stats", methods=["GET"])
+def stats():
+    """Return aggregate cost/token stats for display in the settings modal."""
+    return jsonify(get_cost_stats())
+
+
 @app.route("/summarize", methods=["POST"])
 @limiter.limit(SUMMARIZE_RATE_LIMIT, exempt_when=is_local)
 def summarize():
@@ -253,6 +260,9 @@ def summarize():
                 "caption_length": len((cached.get("subtitles") or "").split()),
                 "model_used": cached.get("model_used") or model,
                 "summary_length": cached.get("summary_length") or length,
+                "prompt_tokens": cached.get("prompt_tokens"),
+                "completion_tokens": cached.get("completion_tokens"),
+                "cost_usd": cached.get("cost_usd"),
                 "cached": True,
             }
         )
@@ -264,7 +274,11 @@ def summarize():
             return jsonify({"error": "No captions found"}), 404
 
         # Summarize
-        summary = summarize_text(video_info["captions"], model=model, length=length)
+        result = summarize_text(video_info["captions"], model=model, length=length)
+        summary_text = result["summary"]
+        prompt_tokens = result.get("prompt_tokens")
+        completion_tokens = result.get("completion_tokens")
+        cost_usd = result.get("cost_usd")
 
         # Save to database using canonical URL so future lookups hit
         save_summary(
@@ -273,20 +287,26 @@ def summarize():
             creator=video_info["creator"],
             video_date=video_info["video_date"],
             subtitles=video_info["captions"],
-            summary=summary,
+            summary=summary_text,
             model_used=model,
             summary_length=length,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            cost_usd=cost_usd,
         )
 
         return jsonify(
             {
-                "summary": summary,
+                "summary": summary_text,
                 "title": video_info["title"],
                 "creator": video_info["creator"],
                 "video_date": video_info["video_date"],
                 "caption_length": len(video_info["captions"].split()),
                 "model_used": model,
                 "summary_length": length,
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "cost_usd": cost_usd,
                 "cached": False,
             }
         )
@@ -316,7 +336,14 @@ def view_summary(summary_id):
     """View detailed summary page"""
     summary = get_summary_by_id(summary_id)
     if not summary:
-        return "Summary not found", 404
+        return (
+            render_template(
+                "404.html",
+                error_title="Summary not found",
+                error_message="This summary doesn't exist or has been deleted.",
+            ),
+            404,
+        )
     return render_template("detail.html", summary=summary)
 
 
@@ -325,7 +352,20 @@ def delete_summary_route(summary_id):
     """Delete a summary"""
     if delete_summary(summary_id):
         return redirect(url_for("index"))
-    return "Summary not found", 404
+    return (
+        render_template(
+            "404.html",
+            error_title="Summary not found",
+            error_message="That summary couldn't be deleted because it doesn't exist.",
+        ),
+        404,
+    )
+
+
+@app.errorhandler(404)
+def page_not_found(_error):
+    """Render the custom 404 page for unknown routes."""
+    return render_template("404.html"), 404
 
 
 @app.route("/health")

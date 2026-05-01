@@ -67,6 +67,19 @@
         </select>
         <small>How many summaries to show per page on the homepage.</small>
       </label>
+
+      <section id="prefs-stats" class="prefs-stats">
+        <h4>Usage</h4>
+        <dl class="prefs-stats__grid">
+          <dt>Total cost</dt>
+          <dd id="stats-total-cost">&mdash;</dd>
+          <dt>Summaries</dt>
+          <dd id="stats-total-summaries">&mdash;</dd>
+          <dt>Tokens</dt>
+          <dd id="stats-total-tokens">&mdash;</dd>
+        </dl>
+        <small id="stats-priced-note" class="prefs-stats__note"></small>
+      </section>
     {% endcall %}
 
     {% set delete_footer %}

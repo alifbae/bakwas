@@ -6,16 +6,14 @@ Skip the bakwas ("nonsense") — extract and summarize YouTube video transcripts
   <img src="docs/images/homepage.png" alt="Bakwas homepage" width="720" />
 </p>
 
-Bakwas is a small, self-hosted Flask app that pulls captions from a YouTube video, sends them through the LLM provider you configure (Anthropic, OpenAI, Google, DeepSeek, Groq, OpenRouter, a local Ollama, or any OpenAI-compatible endpoint), and stores the summary in a local SQLite database so you can revisit it later.
+Bakwas is a small, self-hosted Flask app that pulls captions from a YouTube video, sends them through the LLM provider you configure (Anthropic, OpenAI, Google, DeepSeek, Groq, OpenRouter, a local Ollama, or any OpenAI-compatible endpoint), and stores the summary in a local database so you can revisit it later.
 
 ## Features
 
 - Works with any LLM via a pluggable provider registry — OpenAI-compatible endpoints are fully supported
 - Concise (bulleted) or comprehensive (paragraph) summary styles
 - Server-side sorting, pagination, and URL-based caching so you don't pay to regenerate the same summary twice
-- Settings modal for default model, default summary style, and items-per-page preferences
-- Dark and light themes
-- Rate limiting on the expensive endpoint only, disabled automatically in local dev
+- Settings for default model, default summary style, and cost usage
 - Ships as a single Docker container with a SQLite volume
 
 ## Quick start
@@ -47,7 +45,3 @@ Comprehensive docs are at **[docs.bakwas.alifbae.dev](https://docs.bakwas.alifba
 ## License
 
 MIT — see [LICENSE](LICENSE).
-
-## Disclaimer
-
-AI-generated summaries may contain inaccuracies. Always verify important information against the original video.
