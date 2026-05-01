@@ -38,3 +38,6 @@ DEPLOYMENT.md
 
 # Local provider registry overrides (the shipped default is tracked)
 config/providers.local.yaml
+
+# MkDocs build output
+docs/site/
