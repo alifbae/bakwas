@@ -308,7 +308,7 @@ article header:has(h2) button {
 /* Footer styling - matches nav bar style but more compact */
 footer.container-fluid {
   margin-top: 0;
-  padding: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
   border-top: 1px solid var(--pico-muted-border-color);
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
   display: flex;
@@ -317,16 +317,25 @@ footer.container-fluid {
   gap: 1rem;
 }
 
-footer .footer-left small {
-  color: var(--pico-muted-color);
+footer .footer-left,
+footer .footer-right {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+}
+
+footer .footer-left {
+  justify-content: flex-start;
 }
 
 footer .footer-right {
-  text-align: right;
+  justify-content: flex-end;
 }
 
+footer .footer-left small,
 footer .footer-right small {
   color: var(--pico-muted-color);
+  line-height: 1;
 }
 
 footer a {
@@ -345,8 +354,9 @@ footer a:hover {
     text-align: center;
   }
 
+  footer .footer-left,
   footer .footer-right {
-    text-align: center;
+    justify-content: center;
   }
 }
 
@@ -628,4 +638,23 @@ nav ul:last-of-type li {
 .app-modal .danger:focus {
   filter: brightness(0.92);
   color: #fff;
+}
+
+/* Footer GitHub icon link */
+.footer-icon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  color: var(--pico-muted-color);
+  line-height: 1;
+}
+
+.footer-icon-link:hover,
+.footer-icon-link:focus {
+  color: var(--pico-primary);
+}
+
+.footer-icon-link .icon {
+  display: block;
 }
