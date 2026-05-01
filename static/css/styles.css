@@ -742,3 +742,8 @@ nav ul:last-of-type li {
   margin-top: 0.75rem;
   color: var(--pico-muted-color);
 }
+
+/* Keep the Created timestamp on one line */
+.summaries-table .created-cell {
+  white-space: nowrap;
+}

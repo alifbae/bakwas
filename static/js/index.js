@@ -77,14 +77,14 @@ $(document).ready(function () {
                       <div><strong>Video:</strong> ${data.title}</div>
                       <div><strong>Creator:</strong> ${data.creator}</div>
                       <div><strong>Date:</strong> ${data.video_date}</div>
-                      <div><strong>Length:</strong> <kbd>${data.summary_length}</kbd></div>
+                      <div><strong>Length:</strong> ${data.summary_length}</div>
                       <div><strong>Model:</strong> <small>${modelName}</small></div>
                   `);
 
         const $content = $('<div class="markdown-content">').html(summaryHtml);
 
         const $footer = $("<footer>").html(`
-                      <small>${data.caption_length} words extracted • ${data.cached ? 'Loaded from cache' : 'Saved to database'}${formatCostSuffix(data)}</small><br>
+                      <small>${Number(data.caption_length).toLocaleString()} words extracted • ${data.cached ? 'Loaded from cache' : 'Saved to database'}${formatCostSuffix(data)}</small><br>
                       <small><em>Refresh page to see in table below</em></small>
                   `);
 

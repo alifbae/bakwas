@@ -87,8 +87,8 @@ block content %}
               </div>
             </td>
             <td class="col-hide-sm"><small>{{ summary.creator or 'Unknown' }}</small></td>
-            <td class="col-hide-sm"><kbd>{{ summary.summary_length or 'shortest' }}</kbd></td>
-            <td class="col-hide-md">
+            <td class="col-hide-sm"><small>{{ summary.summary_length or 'shortest' }}</small></td>
+            <td class="col-hide-md created-cell">
               <small data-utc-time="{{ summary.created_at }}">{{ summary.created_at }}</small>
             </td>
             <td>

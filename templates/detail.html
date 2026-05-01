@@ -29,7 +29,7 @@
     <p>
       <strong>Creator:</strong> {{ summary.creator }}<br />
       <strong>Video Date:</strong> {{ summary.video_date or 'Unknown' }}<br />
-      <strong>Summary Length:</strong> <kbd>{{ summary.summary_length or 'shortest' }}</kbd><br />
+      <strong>Summary Length:</strong> {{ summary.summary_length or 'shortest' }}<br />
       <strong>Model Used:</strong> {{ (summary.model_used or 'N/A').split('/')[-1] }}<br />
       {% if summary.cost_usd is not none or summary.prompt_tokens is not none %}
       <strong>Cost:</strong>
@@ -113,7 +113,7 @@
   <section>
     <details>
       <summary>
-        <strong>Full Transcript ({{ summary.subtitles.split()|length }} words)</strong>
+        <strong>Full Transcript ({{ "{:,}".format(summary.subtitles.split()|length) }} words)</strong>
       </summary>
       <div class="transcript">{{ summary.subtitles }}</div>
     </details>
