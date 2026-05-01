@@ -27,6 +27,7 @@
     const container = getContainer();
     const node = document.createElement("div");
     node.className = "toast toast--" + type;
+    node.setAttribute("role", type === "error" ? "alert" : "status");
     node.textContent = message;
 
     container.appendChild(node);

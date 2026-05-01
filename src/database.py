@@ -41,6 +41,7 @@ def init_db():
                 prompt_tokens INTEGER,
                 completion_tokens INTEGER,
                 cost_usd REAL,
+                duration_seconds INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """
@@ -61,6 +62,7 @@ def init_db():
             "ALTER TABLE summaries ADD COLUMN prompt_tokens INTEGER",
             "ALTER TABLE summaries ADD COLUMN completion_tokens INTEGER",
             "ALTER TABLE summaries ADD COLUMN cost_usd REAL",
+            "ALTER TABLE summaries ADD COLUMN duration_seconds INTEGER",
         ):
             try:
                 conn.execute(ddl)
@@ -80,6 +82,7 @@ def save_summary(
     prompt_tokens=None,
     completion_tokens=None,
     cost_usd=None,
+    duration_seconds=None,
 ):
     """Save or update a summary in the database"""
     with get_db() as conn:
@@ -87,9 +90,9 @@ def save_summary(
             """
             INSERT INTO summaries (
                 url, title, creator, video_date, subtitles, summary,
-                model_used, summary_length, prompt_tokens, completion_tokens, cost_usd
+                model_used, summary_length, prompt_tokens, completion_tokens, cost_usd, duration_seconds
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(url) DO UPDATE SET
                 title = excluded.title,
                 creator = excluded.creator,
@@ -101,6 +104,7 @@ def save_summary(
                 prompt_tokens = excluded.prompt_tokens,
                 completion_tokens = excluded.completion_tokens,
                 cost_usd = excluded.cost_usd,
+                duration_seconds = excluded.duration_seconds,
                 created_at = CURRENT_TIMESTAMP
         """,
             (
@@ -115,6 +119,7 @@ def save_summary(
                 prompt_tokens,
                 completion_tokens,
                 cost_usd,
+                duration_seconds,
             ),
         )
 

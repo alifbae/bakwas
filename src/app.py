@@ -7,7 +7,6 @@ import os
 import secrets
 import traceback
 
-import litellm
 from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, redirect, render_template, request, stream_with_context, url_for
 from flask_limiter import Limiter
@@ -80,6 +79,30 @@ def inject_asset_version():
     """Expose ASSET_VERSION to every template as `asset_version`."""
     return {"asset_version": ASSET_VERSION}
 
+
+@app.template_filter("duration")
+def format_duration(seconds):
+    """
+    Format a number of seconds as H:MM:SS or M:SS. Returns '—' for falsy input.
+
+    Examples:
+        65   -> "1:05"
+        3665 -> "1:01:05"
+    """
+    if seconds is None:
+        return "—"
+    try:
+        total = int(seconds)
+    except (TypeError, ValueError):
+        return "—"
+    if total < 0:
+        return "—"
+    h, rem = divmod(total, 3600)
+    m, s = divmod(rem, 60)
+    if h:
+        return f"{h}:{m:02d}:{s:02d}"
+    return f"{m}:{s:02d}"
+
 # Security: Set SECRET_KEY for session management
 app.secret_key = os.getenv("SECRET_KEY", secrets.token_hex(32))
 
@@ -113,9 +136,8 @@ SUMMARIZE_RATE_LIMIT = get_rate_limit_summarize()
 # Initialize database
 init_db()
 
-# Enable verbose logging only if DEBUG env var is set
-if is_debug_mode():
-    litellm.set_verbose = True
+# Verbose LiteLLM logging (when DEBUG=true) is configured lazily inside the
+# summarizer on first use, so the module isn't imported at startup.
 
 # Cache the provider-driven model list at startup. If config/providers.yaml
 # is missing or empty, AVAILABLE_MODELS will be [] and the UI will show
@@ -315,6 +337,7 @@ def summarize():
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             cost_usd=cost_usd,
+            duration_seconds=video_info.get("duration_seconds"),
         )
 
         return jsonify(
@@ -501,6 +524,7 @@ def summarize_stream():
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 cost_usd=cost_usd,
+                duration_seconds=video_info.get("duration_seconds"),
             )
         except Exception as exc:
             print(f"Error saving streamed summary: {exc}")

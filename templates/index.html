@@ -1,6 +1,6 @@
 {% extends "base.html" %} {% from "partials/icons.html" import icon_trash, icon_condense, icon_link %} {% block title %}Bakwas{% endblock %} {%
 block content %}
-<main class="container">
+<main class="container" id="main-content">
   <header class="page-header">
     <img
       src="{{ url_for('static', filename='img/zoned-out-cat.png') }}"
@@ -35,7 +35,7 @@ block content %}
   </div>
 
   <section>
-    <form id="summaryForm" class="summary-form">
+    <form id="summaryForm" class="summary-form" aria-label="Summarize a YouTube video">
       <div class="summary-form__url-wrap">
         {{ icon_link(18) }}
         <input
@@ -43,13 +43,14 @@ block content %}
           id="url"
           class="summary-form__url"
           placeholder="Paste YouTube URL"
+          aria-label="YouTube video URL"
           required
         />
       </div>
-      <select id="model" name="model" class="summary-form__model" required>
+      <select id="model" name="model" class="summary-form__model" aria-label="LLM model" required>
         <option value="">Loading models...</option>
       </select>
-      <select id="length" name="length" class="summary-form__length" required>
+      <select id="length" name="length" class="summary-form__length" aria-label="Summary length" required>
         <option value="concise">Concise</option>
         <option value="comprehensive" selected>Comprehensive</option>
       </select>
@@ -59,7 +60,7 @@ block content %}
       </button>
     </form>
 
-    <article id="result" style="display: none; margin-top: 1rem"></article>
+    <article id="result" style="display: none; margin-top: 1rem" aria-live="polite" aria-atomic="false"></article>
   </section>
 
   <section>
@@ -88,7 +89,7 @@ block content %}
             {{ sort_header('Creator', 'creator', 'col-hide-sm') }}
             {{ sort_header('Length', 'summary_length', 'col-hide-sm') }}
             {{ sort_header('Created', 'created_at', 'col-hide-md') }}
-            <th>Actions</th>
+            <th><span class="visually-hidden">Actions</span></th>
           </tr>
         </thead>
         <tbody>

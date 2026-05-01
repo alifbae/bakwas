@@ -67,6 +67,7 @@ Compose auto-loads `.env` from the project directory, so values flow into the co
 
 ## Production notes
 
-- The image runs **Gunicorn** with 2 worker processes × 4 threads. The Flask dev server is not used in the container.
+- The image runs **Gunicorn** with a single worker and 8 threads (`gthread` worker class). Idle memory sits around 60 MB because LLM libraries are lazy-loaded on first summary request, then rises to around 200 MB once a summary has been generated.
 - The health check hits `/health` every 30 seconds and accepts 3 failures before marking the container unhealthy.
 - Logs go to stdout/stderr and are visible via `docker logs bakwas-app` or `docker-compose logs -f bakwas`.
+- Gunicorn request timeout is 120 seconds to accommodate slow LLM responses.

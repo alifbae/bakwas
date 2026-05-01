@@ -39,8 +39,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 #   - access/error log `-`: write to stdout/stderr so `docker logs` shows them.
 CMD ["gunicorn", \
      "--bind", "0.0.0.0:5000", \
-     "--workers", "2", \
-     "--threads", "4", \
+     "--workers", "1", \
+     "--threads", "8", \
      "--worker-class", "gthread", \
      "--timeout", "120", \
      "--access-logfile", "-", \

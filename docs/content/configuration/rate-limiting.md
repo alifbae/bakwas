@@ -1,8 +1,8 @@
 # Rate limiting
 
-Only `/summarize` is rate limited. Everything else — homepage, `/models`, `/health`, detail view, delete — runs unthrottled.
+Only `/summarize` and `/summarize/stream` are rate limited. Every other endpoint — homepage, `/models`, `/health`, `/stats`, `/search`, detail view, delete — runs unthrottled.
 
-This is intentional: the summarize endpoint is the only one that does expensive outbound work (caption fetch plus an LLM call), so that's where abuse protection matters.
+This is intentional: the summarize endpoints are the only ones that do expensive outbound work (caption fetch plus an LLM call), so that's where abuse protection matters.
 
 ## Default
 
@@ -34,6 +34,6 @@ Rate limiting is skipped automatically whenever any of these are set:
 
 The Docker image leaves these unset, so production traffic is throttled by `RATE_LIMIT_SUMMARIZE`. Local `python run.py` sessions pick up `.env` and are typically unthrottled.
 
-## Gunicorn worker note
+## Storage backend
 
-When running under Gunicorn (the Docker default), Flask-Limiter uses in-memory storage per worker. With 2 workers, each worker maintains its own counter, so in practice the effective cap across the process group is `2 × RATE_LIMIT_SUMMARIZE`. For a self-hosted app this is almost always fine. If you need strict shared-counter limits, point `storage_uri` at Redis.
+Flask-Limiter uses in-memory storage (`memory://`) by default. The shipped Docker image runs a single Gunicorn worker, so counters are process-local and accurate. If you ever scale to multiple workers or multiple containers, switch the storage URI to Redis to share counters across processes — otherwise each worker maintains its own independent quota.

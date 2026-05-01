@@ -28,12 +28,13 @@
 <dialog
   id="{{ id }}"
   class="app-modal{% if size %} app-modal--{{ size }}{% endif %}"
+  aria-labelledby="{% if title %}{{ id }}-title{% endif %}"
   {% if close_on_backdrop %}data-close-on-backdrop="true"{% endif %}
 >
   <article>
     {% if title %}
     <header>
-      <strong>{{ title }}</strong>
+      <h2 id="{{ id }}-title" class="app-modal__title">{{ title }}</h2>
       <button
         aria-label="Close"
         class="app-modal__close"

@@ -6,13 +6,19 @@ Bakwas is a small, self-hosted Flask app that pulls captions from a YouTube vide
 
 ## Features
 
-- Works with any LLM via a pluggable provider registry — OpenAI-compatible endpoints are fully supported
+- Pluggable provider registry — any OpenAI-compatible endpoint works, plus native Anthropic support
+- Real-time streaming of summaries as tokens arrive (no blank-screen wait)
 - Concise (bulleted) or comprehensive (paragraph) summary styles
-- Server-side sorting, pagination, and URL-based caching so you don't pay to regenerate the same summary twice
-- Settings modal for default model, default summary style, and items-per-page preferences
-- Dark and light themes
-- Rate limiting on the expensive endpoint only, disabled automatically in local dev
+- URL-based caching so resubmitting the same video + model + length is free
+- Per-summary cost and token tracking, with a usage total in the settings modal
+- Server-side sorting and pagination of past summaries
+- Fuzzy command palette (Cmd/Ctrl+K) for searching summaries and running actions
+- Preferences: default model, default summary style, items-per-page
+- Paste-to-preview: thumbnail and title appear as soon as you paste a YouTube URL
+- Dark and light themes with popover definition of the word "bakwas"
+- Rate limiting only on the expensive endpoint, disabled automatically in local dev
 - Ships as a single Docker container with a SQLite volume
+- Lightweight: lazy-loaded LLM libraries keep idle memory around 60 MB
 
 ## Next steps
 

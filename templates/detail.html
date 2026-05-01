@@ -3,7 +3,7 @@
 {% from "partials/modal.html" import modal %}
 {% block title %}{{ summary.title }} - Bakwas{% endblock %}
 {% block content %}
-<main class="container">
+<main class="container" id="main-content">
   <div class="detail-header-actions">
     <a href="{{ url_for('index') }}" id="backButton" class="back-link">← Back</a>
     <form
@@ -27,31 +27,6 @@
   <header class="summary-header">
     <h1 class="summary-header__title">{{ summary.title }}</h1>
     <div class="summary-header__body">
-      <div class="summary-header__meta">
-        <p>
-          <strong>Creator:</strong> {{ summary.creator }}<br />
-          <strong>Video Date:</strong> {{ summary.video_date or 'Unknown' }}<br />
-          <strong>Summary Length:</strong> {{ summary.summary_length or 'shortest' }}<br />
-          <strong>Model Used:</strong> {{ (summary.model_used or 'N/A').split('/')[-1] }}<br />
-          {% if summary.cost_usd is not none or summary.prompt_tokens is not none %}
-          <strong>Cost:</strong>
-          {% if summary.cost_usd is not none %}
-            ${{ '%.4f' | format(summary.cost_usd) }}
-          {% else %}
-            <em>unknown</em>
-          {% endif %}
-          {% if summary.prompt_tokens is not none or summary.completion_tokens is not none %}
-            <small style="color: var(--pico-muted-color)">
-              ({{ summary.prompt_tokens or 0 }} in / {{ summary.completion_tokens or 0 }} out tokens)
-            </small>
-          {% endif %}
-          <br />
-          {% endif %}
-          <strong>Summarized:</strong>
-          <span data-utc-time="{{ summary.created_at }}">{{ summary.created_at }}</span><br />
-          <strong>URL:</strong> <a href="{{ summary.url }}" target="_blank">{{ summary.url }}</a>
-        </p>
-      </div>
       {% if video_id %}
       <a
         href="{{ summary.url }}"
@@ -69,6 +44,48 @@
         />
       </a>
       {% endif %}
+      <div class="summary-header__meta">
+        <dl class="summary-header__dl">
+          <dt>Creator</dt>
+          <dd>{{ summary.creator }}</dd>
+
+          <dt>Upload Date</dt>
+          <dd>{{ summary.video_date or 'Unknown' }}</dd>
+
+          {% if summary.duration_seconds %}
+          <dt>Duration</dt>
+          <dd>{{ summary.duration_seconds | duration }}</dd>
+          {% endif %}
+
+          <dt>Summary Length</dt>
+          <dd>{{ summary.summary_length or 'shortest' }}</dd>
+
+          <dt>Model Used</dt>
+          <dd>{{ (summary.model_used or 'N/A').split('/')[-1] }}</dd>
+
+          {% if summary.cost_usd is not none or summary.prompt_tokens is not none %}
+          <dt>Cost</dt>
+          <dd>
+            {% if summary.cost_usd is not none %}
+              ${{ '%.4f' | format(summary.cost_usd) }}
+            {% else %}
+              <em>unknown</em>
+            {% endif %}
+            {% if summary.prompt_tokens is not none or summary.completion_tokens is not none %}
+              <small style="color: var(--pico-muted-color)">
+                ({{ summary.prompt_tokens or 0 }} in / {{ summary.completion_tokens or 0 }} out tokens)
+              </small>
+            {% endif %}
+          </dd>
+          {% endif %}
+
+          <dt>Summarized</dt>
+          <dd><span data-utc-time="{{ summary.created_at }}">{{ summary.created_at }}</span></dd>
+
+          <dt>URL</dt>
+          <dd><a href="{{ summary.url }}" target="_blank" rel="noopener">{{ summary.url }}</a></dd>
+        </dl>
+      </div>
     </div>
   </header>
 

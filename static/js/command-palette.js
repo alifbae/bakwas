@@ -54,6 +54,9 @@
   function buildOverlay() {
     overlay = document.createElement("div");
     overlay.className = "cmdk-backdrop";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-label", "Command palette");
 
     const panel = document.createElement("div");
     panel.className = "cmdk-panel";
@@ -63,6 +66,10 @@
     input.placeholder = "Search summaries or type a command…";
     input.className = "cmdk-input";
     input.autocomplete = "off";
+    input.setAttribute("aria-label", "Search commands and summaries");
+    input.setAttribute("role", "combobox");
+    input.setAttribute("aria-expanded", "true");
+    input.setAttribute("aria-controls", "cmdk-listbox");
     input.addEventListener("input", () => {
       selectedIndex = 0;
       renderList();
@@ -71,6 +78,8 @@
 
     list = document.createElement("ul");
     list.className = "cmdk-list";
+    list.id = "cmdk-listbox";
+    list.setAttribute("role", "listbox");
 
     const hint = document.createElement("div");
     hint.className = "cmdk-hint";

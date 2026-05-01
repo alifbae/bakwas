@@ -3,12 +3,35 @@ Summary generation module.
 
 Builds prompts and dispatches completion calls to any provider registered
 via config/providers.yaml (see src/providers.py).
+
+LiteLLM is imported lazily on first use so that an idle container (serving
+the homepage, models list, stats, search) doesn't carry its ~150 MB
+footprint in memory.
 """
 
-import litellm
-from litellm import completion, completion_cost, cost_per_token
-
 from src.providers import Provider, resolve
+from src.utils import is_debug_mode
+
+
+# Flag so we only toggle litellm.set_verbose once per process lifetime.
+_LITELLM_CONFIGURED = False
+
+
+def _load_litellm():
+    """
+    Lazy-import LiteLLM and configure it on first use. Returns the module
+    plus the helper callables the summarizer needs.
+    """
+    global _LITELLM_CONFIGURED
+    import litellm  # noqa: WPS433 - intentional lazy import
+    from litellm import completion, completion_cost, cost_per_token
+
+    if not _LITELLM_CONFIGURED:
+        if is_debug_mode():
+            litellm.set_verbose = True
+        _LITELLM_CONFIGURED = True
+
+    return litellm, completion, completion_cost, cost_per_token
 
 
 def get_prompt_template(length, text):
@@ -73,7 +96,7 @@ def _extract_usage(response) -> tuple[int | None, int | None]:
     return prompt, completion_tokens
 
 
-def _extract_cost(response) -> float | None:
+def _extract_cost(response, completion_cost) -> float | None:
     """Return the USD cost of a completion, or None when the provider/model isn't priced."""
     hidden = getattr(response, "_hidden_params", None) or {}
     cost = hidden.get("response_cost") if isinstance(hidden, dict) else None
@@ -90,7 +113,7 @@ def _extract_cost(response) -> float | None:
         return None
 
 
-def _cost_from_tokens(model: str, prompt_tokens: int, completion_tokens: int) -> float | None:
+def _cost_from_tokens(cost_per_token, model: str, prompt_tokens: int, completion_tokens: int) -> float | None:
     """Compute USD cost from token counts using LiteLLM's pricing map."""
     try:
         input_cost, output_cost = cost_per_token(
@@ -115,6 +138,8 @@ def summarize_text(text, model, length="comprehensive"):
     if not model:
         raise ValueError("A model id is required. Configure providers in config/providers.yaml.")
 
+    litellm, completion, completion_cost, cost_per_token = _load_litellm()
+
     prompt = get_prompt_template(length, text)
     max_tokens = 2048 if length == "comprehensive" else 1024
 
@@ -136,13 +161,10 @@ def summarize_text(text, model, length="comprehensive"):
 
         summary_text = response.choices[0].message.content
         prompt_tokens, completion_tokens = _extract_usage(response)
-        cost_usd = _extract_cost(response)
+        cost_usd = _extract_cost(response, completion_cost)
 
-        # If LiteLLM didn't compute cost but we have token counts, derive it
-        # from the pricing map. Keeps cost accurate for models LiteLLM knows
-        # about but hasn't priced in the response object yet.
         if cost_usd is None and prompt_tokens and completion_tokens:
-            cost_usd = _cost_from_tokens(model, prompt_tokens, completion_tokens)
+            cost_usd = _cost_from_tokens(cost_per_token, model, prompt_tokens, completion_tokens)
 
         return {
             "summary": summary_text,
@@ -154,7 +176,7 @@ def summarize_text(text, model, length="comprehensive"):
     except Exception as exc:
         error_msg = f"LLM API Error: {exc}"
         print(error_msg)
-        if not litellm.set_verbose:
+        if not getattr(litellm, "set_verbose", False):
             print("Tip: Set DEBUG=True in .env to see detailed error information")
         raise Exception(error_msg)
 
@@ -177,6 +199,8 @@ def summarize_text_stream(text, model, length="comprehensive"):
         raise ValueError(
             "A model id is required. Configure providers in config/providers.yaml."
         )
+
+    _, completion, completion_cost, cost_per_token = _load_litellm()
 
     prompt = get_prompt_template(length, text)
     max_tokens = 2048 if length == "comprehensive" else 1024
@@ -207,12 +231,10 @@ def summarize_text_stream(text, model, length="comprehensive"):
 
         full_summary = "".join(chunks)
         prompt_tokens, completion_tokens = _extract_usage(final_response)
-        cost_usd = _extract_cost(final_response)
+        cost_usd = _extract_cost(final_response, completion_cost)
 
-        # LiteLLM sometimes reports usage on streams but leaves response_cost
-        # as None. Compute it from the pricing map whenever we have tokens.
         if cost_usd is None and prompt_tokens and completion_tokens:
-            cost_usd = _cost_from_tokens(model, prompt_tokens, completion_tokens)
+            cost_usd = _cost_from_tokens(cost_per_token, model, prompt_tokens, completion_tokens)
 
         yield {
             "type": "done",

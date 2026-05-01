@@ -1,7 +1,7 @@
 {% from "partials/modal.html" import modal %}
 {% from "partials/icons.html" import icon_trash %}
 <!doctype html>
-<html data-theme="dark">
+<html lang="en" data-theme="dark">
   <head>
     <title>{% block title %}Bakwas (No Bakwas){% endblock %}</title>
     <meta charset="utf-8" />
@@ -24,6 +24,7 @@
     {% block extra_head %}{% endblock %}
   </head>
   <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     {% include "partials/navbar.html" %}
 
     {% block content %}{% endblock %}

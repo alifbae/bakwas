@@ -104,6 +104,7 @@ def get_video_info(url):
             "title": info.get("title", "Unknown"),
             "creator": info.get("uploader", info.get("channel", "Unknown")),
             "video_date": info.get("upload_date", ""),  # Format: YYYYMMDD
+            "duration_seconds": int(info["duration"]) if info.get("duration") else None,
             "captions": None,
         }
 
