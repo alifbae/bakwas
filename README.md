@@ -34,17 +34,15 @@ Bakwas is now available at [http://localhost:5000](http://localhost:5000).
 
 ## Full documentation
 
-Comprehensive docs are at **[bakwas.alifbae.dev/docs](https://bakwas.alifbae.dev/docs)**, including:
+Comprehensive docs are at **[docs.bakwas.alifbae.dev](https://docs.bakwas.alifbae.dev)**, including:
 
-- [Getting started with Docker](https://bakwas.alifbae.dev/docs/getting-started/docker/)
-- [Local development setup](https://bakwas.alifbae.dev/docs/getting-started/local/)
-- [Environment variables](https://bakwas.alifbae.dev/docs/configuration/env/)
-- [Provider configuration](https://bakwas.alifbae.dev/docs/configuration/providers/)
-- [Rate limiting](https://bakwas.alifbae.dev/docs/configuration/rate-limiting/)
-- [Reverse proxy setup](https://bakwas.alifbae.dev/docs/operations/reverse-proxy/)
-- [Troubleshooting](https://bakwas.alifbae.dev/docs/operations/troubleshooting/)
-
-The docs source lives in [`docs/content/`](docs/content/).
+- [Getting started with Docker](https://docs.bakwas.alifbae.dev/getting-started/docker/)
+- [Local development setup](https://docs.bakwas.alifbae.dev/getting-started/local/)
+- [Environment variables](https://docs.bakwas.alifbae.dev/configuration/env/)
+- [Provider configuration](https://docs.bakwas.alifbae.dev/configuration/providers/)
+- [Rate limiting](https://docs.bakwas.alifbae.dev/configuration/rate-limiting/)
+- [Reverse proxy setup](https://docs.bakwas.alifbae.dev/operations/reverse-proxy/)
+- [Troubleshooting](https://docs.bakwas.alifbae.dev/operations/troubleshooting/)
 
 ## License
 
