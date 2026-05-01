@@ -414,7 +414,8 @@ footer a:hover {
 .app-modal__close {
   background: transparent !important;
   border: none !important;
-  color: var(--pico-muted-color);
+  color: var(--pico-color) !important;
+  opacity: 0.7;
   font-size: 1.5rem;
   line-height: 1;
   padding: 0.25rem 0.5rem;
@@ -425,7 +426,8 @@ footer a:hover {
 
 .app-modal__close:hover,
 .app-modal__close:focus {
-  color: var(--pico-color);
+  color: var(--pico-color) !important;
+  opacity: 1;
 }
 
 /* Reusable modal footer - keep action buttons inline on the right, equal width */
@@ -553,7 +555,17 @@ nav ul:last-of-type li {
   align-items: center;
   justify-content: center;
   margin: 0;
-  padding: 0.35rem 0.5rem;
+  padding: 0.45rem 0.6rem;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+#regenerateBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0.45rem 0.6rem;
   line-height: 1;
   vertical-align: middle;
 }

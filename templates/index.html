@@ -54,7 +54,7 @@ block content %}
     {%- endmacro %}
 
     <div class="summaries-header">
-      <h4>Previous Summaries ({{ pagination.total }})</h4>
+      <h4>Summaries ({{ pagination.total }})</h4>
     </div>
 
     {% if summaries %}
@@ -99,7 +99,7 @@ block content %}
                   data-confirm-delete
                   data-confirm-message="Delete &ldquo;{{ summary.title or 'this summary' }}&rdquo;? This action can&rsquo;t be undone."
                 >
-                  {{ icon_trash(16) }}
+                  {{ icon_trash(22) }}
                 </button>
               </form>
             </td>

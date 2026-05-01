@@ -31,12 +31,16 @@
 
     {% block content %}{% endblock %}
 
+    {% set settings_footer %}
+      <button type="button" class="secondary outline" onclick="closeModal('settings-dialog')">Cancel</button>
+      <button type="submit">Save</button>
+    {% endset %}
     {% call modal(
         id="settings-dialog",
         title="Settings",
         form_id="settings-form",
         form_onsubmit="saveSettings(event); return false;",
-        footer='<button type="button" class="secondary outline" onclick="closeModal(\'settings-dialog\')">Cancel</button><button type="submit">Save</button>'
+        footer=settings_footer
     ) %}
       <label for="prefs-default-model">
         Default Model
@@ -67,10 +71,14 @@
       </label>
     {% endcall %}
 
+    {% set delete_footer %}
+      <button type="button" class="secondary outline" onclick="closeModal('confirm-delete-dialog')">Cancel</button>
+      <button type="button" class="danger" id="confirm-delete-btn">Delete</button>
+    {% endset %}
     {% call modal(
         id="confirm-delete-dialog",
         title="Delete summary?",
-        footer='<button type="button" class="secondary outline" onclick="closeModal(\'confirm-delete-dialog\')">Cancel</button><button type="button" class="danger" id="confirm-delete-btn">Delete</button>'
+        footer=delete_footer
     ) %}
       <p id="confirm-delete-message">
         This summary will be permanently deleted. This action can&rsquo;t be undone.

@@ -23,8 +23,9 @@ from src.database import (
     init_db,
     save_summary,
 )
+from src.providers import list_models as list_provider_models
 from src.subtitles import canonicalize_youtube_url, get_video_info
-from src.summarizer import fetch_anthropic_models, summarize_text
+from src.summarizer import summarize_text
 from src.utils import get_port, is_debug_mode, is_local
 
 # Load environment variables
@@ -77,8 +78,15 @@ init_db()
 if is_debug_mode():
     litellm.set_verbose = True
 
-# Cache available models at startup
-ANTHROPIC_MODELS = fetch_anthropic_models()
+# Cache the provider-driven model list at startup. If config/providers.yaml
+# is missing or empty, AVAILABLE_MODELS will be [] and the UI will show
+# "No models configured". Drop a config file in to fix.
+AVAILABLE_MODELS = list_provider_models()
+if not AVAILABLE_MODELS:
+    print(
+        "[bakwas] No enabled providers found. Copy config/providers.yaml.example "
+        "to config/providers.yaml and set the matching API keys in .env."
+    )
 
 
 @app.route("/")
@@ -152,7 +160,7 @@ def index():
 @app.route("/models", methods=["GET"])
 def get_models():
     """Return cached available models"""
-    return jsonify({"models": ANTHROPIC_MODELS})
+    return jsonify({"models": AVAILABLE_MODELS})
 
 
 @app.route("/summarize", methods=["POST"])
@@ -160,21 +168,43 @@ def get_models():
 def summarize():
     """Main endpoint to summarize a YouTube video"""
     url = request.form.get("url")
-    model = request.form.get("model", "anthropic/claude-sonnet-4-6")
+    model = request.form.get("model") or ""
     length = request.form.get("length", "comprehensive")
+    force = str(request.form.get("force", "")).lower() in {"1", "true", "yes"}
 
     if not url:
         return jsonify({"error": "No URL provided"}), 400
+
+    # Fall back to the default configured model if the client didn't send one.
+    if not model:
+        default_model = next(
+            (m["id"] for m in AVAILABLE_MODELS if m.get("default")),
+            AVAILABLE_MODELS[0]["id"] if AVAILABLE_MODELS else None,
+        )
+        if not default_model:
+            return (
+                jsonify(
+                    {
+                        "error": "No LLM providers are configured. "
+                        "Add at least one provider to config/providers.yaml."
+                    }
+                ),
+                503,
+            )
+        model = default_model
 
     # Canonicalize URL so different forms of the same video share a cache entry
     canonical_url = canonicalize_youtube_url(url)
 
     # Cache hit: skip external calls and LLM cost when we already have
     # a summary for this exact url + model + length combination.
-    cached = get_cached_summary(canonical_url, model, length)
-    if cached is None and canonical_url != url:
-        # Fall back to legacy rows saved before URL canonicalization
-        cached = get_cached_summary(url, model, length)
+    # Regenerate requests pass force=true to bypass the cache entirely.
+    cached = None
+    if not force:
+        cached = get_cached_summary(canonical_url, model, length)
+        if cached is None and canonical_url != url:
+            # Fall back to legacy rows saved before URL canonicalization
+            cached = get_cached_summary(url, model, length)
 
     if cached:
         return jsonify(

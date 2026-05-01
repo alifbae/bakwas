@@ -1,5 +1,8 @@
-{% extends "base.html" %} {% from "partials/icons.html" import icon_trash %} {% block title %}{{ summary.title }} - Bakwas{% endblock %} {% block
-content %}
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon_trash, icon_refresh %}
+{% from "partials/modal.html" import modal %}
+{% block title %}{{ summary.title }} - Bakwas{% endblock %}
+{% block content %}
 <main class="container">
   <div class="detail-header-actions">
     <button id="backButton" class="secondary outline">← Back</button>
@@ -16,7 +19,7 @@ content %}
         data-confirm-delete
         data-confirm-message="Delete &ldquo;{{ summary.title or 'this summary' }}&rdquo;? This action can&rsquo;t be undone."
       >
-        {{ icon_trash(18) }}
+        {{ icon_trash(24) }}
       </button>
     </form>
   </div>
@@ -38,7 +41,14 @@ content %}
     <article>
       <header>
         <h2>Summary</h2>
-        <button id="regenerateBtn" class="outline">Regenerate</button>
+        <button
+          id="regenerateBtn"
+          class="outline icon-only"
+          title="Regenerate summary"
+          aria-label="Regenerate summary"
+        >
+          {{ icon_refresh(24) }}
+        </button>
       </header>
       <div class="markdown-content" id="summary-content">
         <!-- Markdown will be rendered here -->
@@ -61,39 +71,30 @@ content %}
     data-index-url="{{ url_for('index') }}"
   ></div>
 
-  <!-- Regenerate Modal -->
-  <dialog id="regenerateModal">
-    <article>
-      <header>
-        <button
-          aria-label="Close"
-          rel="prev"
-          data-close-regenerate
-          type="button"
-        ></button>
-        <h3>Regenerate Summary</h3>
-      </header>
-      <form id="regenerateForm">
-        <label for="regenerate-model">
-          Model
-          <select id="regenerate-model" name="model" required>
-            <option value="">Loading models...</option>
-          </select>
-        </label>
-        <label for="regenerate-length">
-          Summary Style
-          <select id="regenerate-length" name="length" required>
-            <option value="concise">Concise</option>
-            <option value="comprehensive" selected>Comprehensive</option>
-          </select>
-        </label>
-      </form>
-      <footer>
-        <button class="secondary" data-close-regenerate type="button">Cancel</button>
-        <button id="confirmRegenerate">Regenerate</button>
-      </footer>
-    </article>
-  </dialog>
+  {% set regenerate_footer %}
+    <button type="button" class="secondary outline" onclick="closeModal('regenerateModal')">Cancel</button>
+    <button type="button" id="confirmRegenerate">Regenerate</button>
+  {% endset %}
+  {% call modal(
+      id="regenerateModal",
+      title="Regenerate Summary",
+      form_id="regenerateForm",
+      footer=regenerate_footer
+  ) %}
+    <label for="regenerate-model">
+      Model
+      <select id="regenerate-model" name="model" required>
+        <option value="">Loading models...</option>
+      </select>
+    </label>
+    <label for="regenerate-length">
+      Summary Style
+      <select id="regenerate-length" name="length" required>
+        <option value="concise">Concise</option>
+        <option value="comprehensive" selected>Comprehensive</option>
+      </select>
+    </label>
+  {% endcall %}
 
   <section>
     <details>

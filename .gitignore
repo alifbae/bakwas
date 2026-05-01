@@ -35,3 +35,6 @@ DEPLOYMENT.md
 
 # Pre-commit cache
 .cache/
+
+# Local provider registry (keep providers.yaml.example in git, not the real one)
+config/providers.yaml

@@ -71,18 +71,10 @@ $(document).ready(function () {
 
   // Open regenerate modal
   $("#regenerateBtn").on("click", function () {
-    const dialog = document.getElementById("regenerateModal");
-    if (dialog && typeof dialog.showModal === "function") {
-      dialog.showModal();
-    }
+    openModal("regenerateModal");
   });
 
-  // Close from modal's internal buttons (cancel / close)
-  $("#regenerateModal [data-close-regenerate]").on("click", function () {
-    document.getElementById("regenerateModal").close();
-  });
-
-  // Confirm regeneration
+  // Confirm regeneration (force=true bypasses the cache)
   $("#confirmRegenerate").on("click", function () {
     const videoUrl = readJsonScript("video-url");
     if (!videoUrl) {
@@ -93,7 +85,7 @@ $(document).ready(function () {
     const selectedModel = $("#regenerate-model").val();
     const selectedLength = $("#regenerate-length").val();
 
-    document.getElementById("regenerateModal").close();
+    closeModal("regenerateModal");
 
     $summaryContent.html(
       '<p aria-busy="true">Regenerating summary with AI...</p>'
@@ -106,6 +98,7 @@ $(document).ready(function () {
         url: videoUrl,
         model: selectedModel,
         length: selectedLength,
+        force: "true",
       },
       success: function (data) {
         renderSummary(data.summary);
