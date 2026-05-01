@@ -48,6 +48,37 @@ app = Flask(
     static_folder=str(project_root / "static"),
 )
 
+
+def _compute_asset_version() -> str:
+    """
+    Stable version string used to bust browser caches for local static assets.
+    Derived from the newest modification time across static/css and static/js.
+    The version changes only when a file is edited, so browsers can cache
+    aggressively between deploys without manual cache invalidation.
+    """
+    newest = 0.0
+    for subdir in ("css", "js"):
+        folder = project_root / "static" / subdir
+        if not folder.exists():
+            continue
+        for path in folder.rglob("*"):
+            if path.is_file():
+                try:
+                    newest = max(newest, path.stat().st_mtime)
+                except OSError:
+                    continue
+    # Seconds-precision integer keeps the URL short and stable.
+    return str(int(newest)) if newest else "0"
+
+
+ASSET_VERSION = _compute_asset_version()
+
+
+@app.context_processor
+def inject_asset_version():
+    """Expose ASSET_VERSION to every template as `asset_version`."""
+    return {"asset_version": ASSET_VERSION}
+
 # Security: Set SECRET_KEY for session management
 app.secret_key = os.getenv("SECRET_KEY", secrets.token_hex(32))
 

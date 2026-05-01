@@ -148,5 +148,5 @@ block content %}
   </section>
 </main>
 {% endblock %} {% block extra_scripts %}
-<script src="{{ url_for('static', filename='js/index.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/index.js') }}?v={{ asset_version }}"></script>
 {% endblock %}
