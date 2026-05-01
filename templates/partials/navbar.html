@@ -3,22 +3,29 @@
   Contains brand link, settings button, and theme toggle.
   Included from base.html via {% include "partials/navbar.html" %}.
 #}
+{% from "partials/icons.html" import icon_search %}
 <nav class="container-fluid">
   <ul>
     <li>
       <strong>
         <a href="{{ url_for('index') }}" class="brand">
-          <img
-            src="{{ url_for('static', filename='img/zoned-out-cat.png') }}"
-            alt="Bakwas"
-            class="nav-logo"
-          />
-          <s>Bakwas</s>
+          Bakwas
         </a>
       </strong>
     </li>
   </ul>
   <ul>
+    <li>
+      <button
+        class="cmdk-trigger"
+        onclick="window.openCommandPalette && window.openCommandPalette()"
+        title="Open command palette (Ctrl/Cmd+K)"
+        aria-label="Open command palette"
+      >
+        {{ icon_search(18) }}
+        <kbd class="cmdk-trigger__kbd">⌘K</kbd>
+      </button>
+    </li>
     <li>
       <button
         class="theme-toggle outline nav-icon-btn"

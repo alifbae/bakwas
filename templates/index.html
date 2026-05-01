@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% from "partials/icons.html" import icon_trash %} {% block title %}Bakwas{% endblock %} {%
+{% extends "base.html" %} {% from "partials/icons.html" import icon_trash, icon_condense, icon_link %} {% block title %}Bakwas{% endblock %} {%
 block content %}
 <main class="container">
   <header class="page-header">
@@ -7,36 +7,56 @@ block content %}
       alt="Bakwas Cat"
       class="hero-logo"
     />
-    <h1>
-      <s>Bakwas</s>
-      <a
-        href="https://www.rekhta.org/urdudictionary?keyword=%E0%A4%AC%E0%A4%95%E0%A4%B5%E0%A4%BE%E0%A4%B8"
-        target="_blank"
-        ><small style="font-size: 0.5em; color: #888">بکواس</small></a
-      >
-    </h1>
-    <p>Summarize YouTube video transcripts with AI</p>
+    <div class="page-header__text">
+      <h1>
+        Bakwas
+        <button
+          type="button"
+          class="page-header__urdu-btn"
+          popovertarget="bakwas-definition"
+          aria-label="What does Bakwas mean?"
+          id="bakwas-anchor"
+          style="anchor-name: --bakwas-anchor"
+        >
+          <small class="page-header__urdu">بکواس</small>
+        </button>
+      </h1>
+      <p class="page-header__tagline">Summarize YouTube video transcripts with AI</p>
+    </div>
   </header>
+
+  <div
+    id="bakwas-definition"
+    popover
+    class="definition-popover"
+    role="tooltip"
+  >
+    <strong>Bakwas</strong> (بکواس) &mdash; Urdu/Hindi for <em>nonsense</em>. Refers to talk or ideas that are foolish, useless, or untrue.
+  </div>
 
   <section>
     <form id="summaryForm" class="summary-form">
-      <input
-        type="text"
-        id="url"
-        class="summary-form__url"
-        placeholder="Paste YouTube URL"
-        required
-      />
-      <div class="summary-form__controls">
-        <select id="model" name="model" required>
-          <option value="">Loading models...</option>
-        </select>
-        <select id="length" name="length" required>
-          <option value="concise">Concise</option>
-          <option value="comprehensive" selected>Comprehensive</option>
-        </select>
-        <button type="submit">Summarize</button>
+      <div class="summary-form__url-wrap">
+        {{ icon_link(18) }}
+        <input
+          type="text"
+          id="url"
+          class="summary-form__url"
+          placeholder="Paste YouTube URL"
+          required
+        />
       </div>
+      <select id="model" name="model" class="summary-form__model" required>
+        <option value="">Loading models...</option>
+      </select>
+      <select id="length" name="length" class="summary-form__length" required>
+        <option value="concise">Concise</option>
+        <option value="comprehensive" selected>Comprehensive</option>
+      </select>
+      <button type="submit" class="summary-form__submit">
+        {{ icon_condense(16) }}
+        <span>Summarize</span>
+      </button>
     </form>
 
     <article id="result" style="display: none; margin-top: 1rem"></article>
@@ -59,16 +79,12 @@ block content %}
       </th>
     {%- endmacro %}
 
-    <div class="summaries-header">
-      <h4>Summaries ({{ pagination.total }})</h4>
-    </div>
-
     {% if summaries %}
     <figure>
       <table role="grid" class="summaries-table">
         <thead>
           <tr>
-            {{ sort_header('Video', 'title') }}
+            {{ sort_header('Title', 'title') }}
             {{ sort_header('Creator', 'creator', 'col-hide-sm') }}
             {{ sort_header('Length', 'summary_length', 'col-hide-sm') }}
             {{ sort_header('Created', 'created_at', 'col-hide-md') }}
@@ -80,7 +96,7 @@ block content %}
           <tr>
             <td class="video-cell">
               <a href="{{ url_for('view_summary', summary_id=summary.id) }}">
-                <strong>{{ summary.title or 'Untitled' }}</strong>
+                {{ summary.title or 'Untitled' }}
               </a>
               <div class="video-meta-sm">
                 <small>{{ summary.creator or 'Unknown' }}</small>
@@ -121,25 +137,15 @@ block content %}
       {% set last = pagination.total_pages %}
       <a
         class="page-link{% if p <= 1 %} disabled{% endif %}"
-        href="{{ url_for('index', sort=sort_by, dir=sort_dir, page=1, per_page=pagination.per_page) }}"
-        aria-label="First page"
-      >«</a>
-      <a
-        class="page-link{% if p <= 1 %} disabled{% endif %}"
         href="{{ url_for('index', sort=sort_by, dir=sort_dir, page=p-1, per_page=pagination.per_page) }}"
         aria-label="Previous page"
-      >‹</a>
-      <span class="page-status"><small>Page {{ p }} of {{ last }}</small></span>
+      >← Prev</a>
+      <span class="page-status">{{ p }} / {{ last }}</span>
       <a
         class="page-link{% if p >= last %} disabled{% endif %}"
         href="{{ url_for('index', sort=sort_by, dir=sort_dir, page=p+1, per_page=pagination.per_page) }}"
         aria-label="Next page"
-      >›</a>
-      <a
-        class="page-link{% if p >= last %} disabled{% endif %}"
-        href="{{ url_for('index', sort=sort_by, dir=sort_dir, page=last, per_page=pagination.per_page) }}"
-        aria-label="Last page"
-      >»</a>
+      >Next →</a>
     </nav>
     {% endif %}
     {% else %}

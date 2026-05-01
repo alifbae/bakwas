@@ -6,7 +6,7 @@ via config/providers.yaml (see src/providers.py).
 """
 
 import litellm
-from litellm import completion, completion_cost
+from litellm import completion, completion_cost, cost_per_token
 
 from src.providers import Provider, resolve
 
@@ -65,7 +65,6 @@ def _extract_usage(response) -> tuple[int | None, int | None]:
     usage = getattr(response, "usage", None)
     if not usage:
         return None, None
-    # LiteLLM may expose usage as an object or a dict depending on the provider.
     prompt = getattr(usage, "prompt_tokens", None)
     completion_tokens = getattr(usage, "completion_tokens", None)
     if prompt is None and isinstance(usage, dict):
@@ -76,7 +75,6 @@ def _extract_usage(response) -> tuple[int | None, int | None]:
 
 def _extract_cost(response) -> float | None:
     """Return the USD cost of a completion, or None when the provider/model isn't priced."""
-    # Prefer the already-computed value if LiteLLM attached one.
     hidden = getattr(response, "_hidden_params", None) or {}
     cost = hidden.get("response_cost") if isinstance(hidden, dict) else None
     if cost is not None:
@@ -85,10 +83,23 @@ def _extract_cost(response) -> float | None:
         except (TypeError, ValueError):
             pass
 
-    # Fall back to asking LiteLLM to compute it.
     try:
         computed = completion_cost(completion_response=response)
         return float(computed) if computed is not None else None
+    except Exception:
+        return None
+
+
+def _cost_from_tokens(model: str, prompt_tokens: int, completion_tokens: int) -> float | None:
+    """Compute USD cost from token counts using LiteLLM's pricing map."""
+    try:
+        input_cost, output_cost = cost_per_token(
+            model=model,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
+        total = float((input_cost or 0) + (output_cost or 0))
+        return total if total > 0 else None
     except Exception:
         return None
 
@@ -127,6 +138,12 @@ def summarize_text(text, model, length="comprehensive"):
         prompt_tokens, completion_tokens = _extract_usage(response)
         cost_usd = _extract_cost(response)
 
+        # If LiteLLM didn't compute cost but we have token counts, derive it
+        # from the pricing map. Keeps cost accurate for models LiteLLM knows
+        # about but hasn't priced in the response object yet.
+        if cost_usd is None and prompt_tokens and completion_tokens:
+            cost_usd = _cost_from_tokens(model, prompt_tokens, completion_tokens)
+
         return {
             "summary": summary_text,
             "prompt_tokens": prompt_tokens,
@@ -140,3 +157,70 @@ def summarize_text(text, model, length="comprehensive"):
         if not litellm.set_verbose:
             print("Tip: Set DEBUG=True in .env to see detailed error information")
         raise Exception(error_msg)
+
+
+def summarize_text_stream(text, model, length="comprehensive"):
+    """
+    Generator version of summarize_text for Server-Sent Events.
+
+    Yields:
+        {"type": "chunk", "content": "..."}       partial text chunk
+        {"type": "done", "summary": "...",
+         "prompt_tokens": int | None,
+         "completion_tokens": int | None,
+         "cost_usd": float | None}                final event with totals
+        {"type": "error", "error": "..."}         on failure
+
+    The caller is responsible for persisting the final summary.
+    """
+    if not model:
+        raise ValueError(
+            "A model id is required. Configure providers in config/providers.yaml."
+        )
+
+    prompt = get_prompt_template(length, text)
+    max_tokens = 2048 if length == "comprehensive" else 1024
+
+    chunks: list[str] = []
+    final_response = None
+
+    try:
+        stream = completion(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens,
+            stream=True,
+            stream_options={"include_usage": True},
+            **_completion_kwargs_for(model),
+        )
+
+        for chunk in stream:
+            final_response = chunk
+            try:
+                delta = chunk.choices[0].delta
+                content = getattr(delta, "content", None)
+                if content:
+                    chunks.append(content)
+                    yield {"type": "chunk", "content": content}
+            except (AttributeError, IndexError):
+                continue
+
+        full_summary = "".join(chunks)
+        prompt_tokens, completion_tokens = _extract_usage(final_response)
+        cost_usd = _extract_cost(final_response)
+
+        # LiteLLM sometimes reports usage on streams but leaves response_cost
+        # as None. Compute it from the pricing map whenever we have tokens.
+        if cost_usd is None and prompt_tokens and completion_tokens:
+            cost_usd = _cost_from_tokens(model, prompt_tokens, completion_tokens)
+
+        yield {
+            "type": "done",
+            "summary": full_summary,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "cost_usd": cost_usd,
+        }
+
+    except Exception as exc:
+        yield {"type": "error", "error": f"LLM API Error: {exc}"}

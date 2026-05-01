@@ -116,9 +116,4 @@ $(document).ready(function () {
       },
     });
   });
-
-  // Back button handler
-  $("#backButton").on("click", function () {
-    window.location.href = indexUrl;
-  });
 });

@@ -9,7 +9,7 @@ import traceback
 
 import litellm
 from dotenv import load_dotenv
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask import Flask, Response, jsonify, redirect, render_template, request, stream_with_context, url_for
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
@@ -25,8 +25,8 @@ from src.database import (
     save_summary,
 )
 from src.providers import list_models as list_provider_models
-from src.subtitles import canonicalize_youtube_url, get_video_info
-from src.summarizer import summarize_text
+from src.subtitles import canonicalize_youtube_url, extract_video_id, get_video_info
+from src.summarizer import summarize_text, summarize_text_stream
 from src.utils import (
     get_port,
     get_rate_limit_summarize,
@@ -94,7 +94,8 @@ csp = {
         "fonts.googleapis.com",
     ],
     "font-src": ["'self'", "fonts.googleapis.com", "fonts.gstatic.com"],
-    "img-src": ["'self'", "data:"],
+    "img-src": ["'self'", "data:", "i.ytimg.com", "img.youtube.com"],
+    "connect-src": ["'self'", "noembed.com"],
 }
 Talisman(app, content_security_policy=csp, force_https=False)
 
@@ -205,6 +206,27 @@ def get_models():
 def stats():
     """Return aggregate cost/token stats for display in the settings modal."""
     return jsonify(get_cost_stats())
+
+
+@app.route("/search", methods=["GET"])
+def search():
+    """
+    Return up to 200 summary rows for client-side fuzzy filtering in the
+    command palette. Kept small to avoid shipping large subtitle blobs.
+    """
+    # Reuse the unpaginated list but trim to a handful of fields.
+    result = get_all_summaries(sort_by="created_at", sort_dir="desc")
+    items = [
+        {
+            "id": row["id"],
+            "title": row.get("title") or "Untitled",
+            "creator": row.get("creator") or "",
+            "created_at": row.get("created_at"),
+            "url": url_for("view_summary", summary_id=row["id"]),
+        }
+        for row in result["items"][:200]
+    ]
+    return jsonify({"summaries": items})
 
 
 @app.route("/summarize", methods=["POST"])
@@ -331,6 +353,179 @@ def summarize():
         )
 
 
+@app.route("/summarize/stream", methods=["POST"])
+@limiter.limit(SUMMARIZE_RATE_LIMIT, exempt_when=is_local)
+def summarize_stream():
+    """
+    Stream a summary back as Server-Sent Events.
+
+    Events:
+        meta   - video metadata (title, creator, etc) plus cached hint
+        chunk  - partial summary text (appended by the client)
+        done   - final event with totals (tokens, cost) and persistence ack
+        error  - on failure
+    """
+    url = request.form.get("url")
+    model = request.form.get("model") or ""
+    length = request.form.get("length", "comprehensive")
+    force = str(request.form.get("force", "")).lower() in {"1", "true", "yes"}
+
+    if not url:
+        return jsonify({"error": "No URL provided"}), 400
+
+    if not model:
+        default_model = next(
+            (m["id"] for m in AVAILABLE_MODELS if m.get("default")),
+            AVAILABLE_MODELS[0]["id"] if AVAILABLE_MODELS else None,
+        )
+        if not default_model:
+            return (
+                jsonify(
+                    {
+                        "error": "No LLM providers are configured. "
+                        "Add at least one provider to config/providers.yaml."
+                    }
+                ),
+                503,
+            )
+        model = default_model
+
+    canonical_url = canonicalize_youtube_url(url)
+
+    def sse(event: str, payload: dict) -> str:
+        import json as _json
+
+        return f"event: {event}\ndata: {_json.dumps(payload)}\n\n"
+
+    def event_stream():
+        # Cache hit: deliver the stored summary as a single chunk + done.
+        cached = None
+        if not force:
+            cached = get_cached_summary(canonical_url, model, length)
+            if cached is None and canonical_url != url:
+                cached = get_cached_summary(url, model, length)
+
+        if cached:
+            caption_length = len((cached.get("subtitles") or "").split())
+            yield sse(
+                "meta",
+                {
+                    "title": cached.get("title") or "",
+                    "creator": cached.get("creator") or "",
+                    "video_date": cached.get("video_date") or "",
+                    "caption_length": caption_length,
+                    "model_used": cached.get("model_used") or model,
+                    "summary_length": cached.get("summary_length") or length,
+                    "cached": True,
+                },
+            )
+            yield sse("chunk", {"content": cached["summary"]})
+            yield sse(
+                "done",
+                {
+                    "summary": cached["summary"],
+                    "prompt_tokens": cached.get("prompt_tokens"),
+                    "completion_tokens": cached.get("completion_tokens"),
+                    "cost_usd": cached.get("cost_usd"),
+                    "cached": True,
+                },
+            )
+            return
+
+        # Fetch captions and stream the LLM response.
+        try:
+            video_info = get_video_info(canonical_url)
+            if not video_info["captions"]:
+                yield sse("error", {"error": "No captions found"})
+                return
+        except ValueError:
+            yield sse("error", {"error": "Invalid request. Please check your input."})
+            return
+        except Exception as exc:
+            print(f"Error extracting captions: {exc}")
+            if is_debug_mode():
+                traceback.print_exc()
+            yield sse("error", {"error": "Failed to extract captions."})
+            return
+
+        yield sse(
+            "meta",
+            {
+                "title": video_info["title"],
+                "creator": video_info["creator"],
+                "video_date": video_info["video_date"],
+                "caption_length": len(video_info["captions"].split()),
+                "model_used": model,
+                "summary_length": length,
+                "cached": False,
+            },
+        )
+
+        full_summary = ""
+        prompt_tokens = None
+        completion_tokens = None
+        cost_usd = None
+
+        try:
+            for event in summarize_text_stream(
+                video_info["captions"], model=model, length=length
+            ):
+                if event["type"] == "chunk":
+                    yield sse("chunk", {"content": event["content"]})
+                elif event["type"] == "done":
+                    full_summary = event.get("summary", "")
+                    prompt_tokens = event.get("prompt_tokens")
+                    completion_tokens = event.get("completion_tokens")
+                    cost_usd = event.get("cost_usd")
+                elif event["type"] == "error":
+                    yield sse("error", {"error": event.get("error", "Unknown error")})
+                    return
+        except Exception as exc:
+            print(f"Error streaming summary: {exc}")
+            if is_debug_mode():
+                traceback.print_exc()
+            yield sse("error", {"error": "Failed to generate summary."})
+            return
+
+        # Persist the final summary before sending the done event.
+        try:
+            save_summary(
+                url=canonical_url,
+                title=video_info["title"],
+                creator=video_info["creator"],
+                video_date=video_info["video_date"],
+                subtitles=video_info["captions"],
+                summary=full_summary,
+                model_used=model,
+                summary_length=length,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                cost_usd=cost_usd,
+            )
+        except Exception as exc:
+            print(f"Error saving streamed summary: {exc}")
+
+        yield sse(
+            "done",
+            {
+                "summary": full_summary,
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "cost_usd": cost_usd,
+                "cached": False,
+            },
+        )
+
+    return Response(
+        stream_with_context(event_stream()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # disable proxy buffering for real-time delivery
+        },
+    )
+
+
 @app.route("/summary/<int:summary_id>")
 def view_summary(summary_id):
     """View detailed summary page"""
@@ -344,7 +539,8 @@ def view_summary(summary_id):
             ),
             404,
         )
-    return render_template("detail.html", summary=summary)
+    video_id = extract_video_id(summary.get("url", ""))
+    return render_template("detail.html", summary=summary, video_id=video_id)
 
 
 @app.route("/summary/<int:summary_id>/delete", methods=["POST"])

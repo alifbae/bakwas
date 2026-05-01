@@ -86,8 +86,8 @@ main {
   flex: 1;
 }
 
-/* Navigation separator */
-nav {
+/* Top navigation bar separator (only the main header nav) */
+nav.container-fluid {
   border-bottom: 1px solid var(--pico-muted-border-color);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -150,27 +150,58 @@ button,
   font-size: 1.2em;
 }
 
-/* Page header centering */
+/* Page header: logo on the left, title + tagline stacked on the right */
 .page-header {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
   margin-bottom: 2rem;
+  text-align: left;
+}
+
+.page-header__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .page-header h1 {
-  margin-bottom: 0.5rem;
+  margin: 0;
+  line-height: 1.1;
+}
+
+.page-header__urdu {
+  font-size: 0.5em;
+  color: var(--pico-muted-color);
+}
+
+.page-header__tagline {
+  margin: 0;
+  color: var(--pico-muted-color);
 }
 
 .page-header p {
   color: var(--pico-muted-color);
 }
 
+/* Stack on phones so the title doesn't get squeezed */
+@media (max-width: 640px) {
+  .page-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.75rem;
+  }
+  .page-header__text {
+    align-items: center;
+  }
+}
+
 /* Hero logo */
 .hero-logo {
-  width: 150px;
-  height: 150px;
+  width: 120px;
+  height: 120px;
   object-fit: contain;
-  margin: 0 auto 1rem;
-  display: block;
+  flex-shrink: 0;
   border-radius: 20%;
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
   transition:
@@ -183,30 +214,29 @@ button,
   filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4));
 }
 
-/* Summary form layout: URL on its own full-width row, controls underneath */
+/* Summary form layout: URL 50%, model 25%, length 12.5%, submit 12.5% */
 .summary-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.summary-form__url {
-  width: 100%;
-  margin: 0;
-}
-
-.summary-form__controls {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) auto;
+  grid-template-columns: 4fr 2fr 1fr 1fr;
   gap: 0.5rem;
   align-items: center;
-  max-width: 36rem;
-  margin: 0 auto;
 }
 
-.summary-form__controls select,
-.summary-form__controls button {
-  margin: 0;
+.summary-form > input,
+.summary-form > select,
+.summary-form > button,
+.summary-form__url {
+  margin: 0 !important;
+  min-width: 0;
+  width: 100%;
+  /* Reduce vertical height ~20% by trimming Pico's default form-element spacing */
+  --pico-form-element-spacing-vertical: 0.55rem;
+  line-height: 1.25;
+}
+
+/* URL preview card sits underneath the whole form row, not inline with it */
+.url-preview {
+  margin-top: 1rem;
 }
 
 /* Small button for table actions */
@@ -228,8 +258,23 @@ button.icon-only {
   margin-bottom: 1.5rem;
 }
 
-.detail-header-actions button {
+.detail-header-actions button,
+.detail-header-actions .back-link {
   margin: 0;
+}
+
+.back-link {
+  color: var(--pico-muted-color);
+  text-decoration: none;
+  font-size: 0.95rem;
+  padding: 0;
+  transition: color 0.15s ease;
+}
+
+.back-link:hover,
+.back-link:focus {
+  color: var(--pico-primary);
+  text-decoration: none;
 }
 
 /* Transcript styling */
@@ -390,7 +435,7 @@ footer a:hover {
 
 /* Phone breakpoint: collapse to just Video + Actions, with creator under title */
 @media (max-width: 640px) {
-  .summary-form__controls {
+  .summary-form {
     grid-template-columns: 1fr;
   }
 
@@ -529,50 +574,59 @@ nav ul:last-of-type li {
   opacity: 0.8;
 }
 
-/* Pagination controls */
+/* Space between the input form (and optional URL preview) and the table below */
+#summaryForm,
+#url-preview {
+  margin-bottom: 2rem;
+}
+
+/* Pagination controls - minimal text links, no backgrounds */
 .pagination {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
+  gap: 1.5rem;
   margin: 1rem 0 1.5rem;
   flex-wrap: wrap;
+  font-size: 0.9rem;
+  background: transparent !important;
+  border: none !important;
 }
 
 .pagination .page-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2rem;
-  height: 2rem;
-  padding: 0 0.5rem;
-  border-radius: var(--pico-border-radius);
-  text-decoration: none;
-  color: var(--pico-color);
-  background: var(--pico-secondary-background);
-  line-height: 1;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: var(--pico-muted-color) !important;
+  text-decoration: none !important;
+  padding: 0;
+  margin: 0;
+  transition: color 0.15s ease;
 }
 
-.pagination .page-link:hover {
-  background: var(--pico-muted-border-color);
-  color: var(--pico-primary);
+.pagination .page-link:hover,
+.pagination .page-link:focus,
+.pagination .page-link:active,
+.pagination .page-link:visited {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  color: var(--pico-primary) !important;
+  text-decoration: none !important;
 }
 
 .pagination .page-link.disabled {
   pointer-events: none;
-  opacity: 0.4;
+  opacity: 0.35;
 }
 
 .pagination .page-status {
-  padding: 0 0.5rem;
   color: var(--pico-muted-color);
-}
-
-.summaries-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 1rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 
 /* Icon inside buttons should not add baseline spacing */
@@ -746,4 +800,547 @@ nav ul:last-of-type li {
 /* Keep the Created timestamp on one line */
 .summaries-table .created-cell {
   white-space: nowrap;
+}
+
+
+/* ============================================================
+   Toasts
+   ============================================================ */
+.toast-container {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  min-width: 14rem;
+  max-width: 22rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--pico-border-radius);
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  transform: translateY(0.5rem);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast--info {
+  background: var(--pico-contrast);
+  color: var(--pico-contrast-inverse, #fff);
+}
+
+.toast--success {
+  background: var(--pico-ins-color, #2ea043);
+  color: #fff;
+}
+
+.toast--error {
+  background: var(--pico-del-color, #dc322f);
+  color: #fff;
+}
+
+@media (max-width: 640px) {
+  .toast-container {
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+  }
+
+  .toast {
+    max-width: none;
+  }
+}
+
+/* ============================================================
+   Skeleton loading
+   ============================================================ */
+.skeleton-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.5rem 0;
+}
+
+.skeleton-line {
+  height: 0.9rem;
+  border-radius: 0.45rem;
+  background: linear-gradient(
+    90deg,
+    var(--pico-muted-border-color) 0%,
+    var(--pico-secondary-background) 50%,
+    var(--pico-muted-border-color) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-line--title {
+  height: 1.4rem;
+  width: 60%;
+}
+
+.skeleton-line--sm {
+  width: 75%;
+}
+
+.skeleton-line--md {
+  width: 100%;
+}
+
+.skeleton-line--lg {
+  width: 92%;
+}
+
+.skeleton-line--xs {
+  width: 40%;
+}
+
+.skeleton-summary__status {
+  margin-top: 0.5rem;
+  color: var(--pico-muted-color);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ============================================================
+   URL preview (below the form after paste)
+   ============================================================ */
+.url-preview {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 1rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.url-preview__thumb {
+  width: 180px;
+  height: 101px;
+  border-radius: 6px;
+  object-fit: cover;
+  display: block;
+  flex-shrink: 0;
+}
+
+.url-preview__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.url-preview__title {
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
+}
+
+.url-preview__meta {
+  font-size: 0.85rem;
+  color: var(--pico-muted-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.url-preview--error {
+  color: var(--pico-del-color, #dc322f);
+}
+
+.url-preview--error .url-preview__title {
+  color: var(--pico-del-color, #dc322f);
+}
+
+/* ============================================================
+   Command palette (Cmd/Ctrl+K)
+   ============================================================ */
+.cmdk-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 10vh;
+  z-index: 9998;
+  animation: cmdk-fade 0.12s ease-out;
+}
+
+.cmdk-panel {
+  width: min(36rem, 92vw);
+  max-height: 70vh;
+  background: var(--pico-background-color);
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cmdk-input {
+  border: none !important;
+  border-bottom: 1px solid var(--pico-muted-border-color) !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 0.9rem 1rem !important;
+  background: transparent !important;
+  font-size: 1rem;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.cmdk-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.cmdk-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  color: var(--pico-color);
+  text-decoration: none;
+  line-height: 1.3;
+}
+
+.cmdk-item[aria-selected="true"],
+.cmdk-item:hover {
+  background: var(--pico-secondary-background);
+}
+
+.cmdk-item__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cmdk-item__sub {
+  color: var(--pico-muted-color);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cmdk-empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--pico-muted-color);
+  font-size: 0.9rem;
+}
+
+.cmdk-hint {
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  color: var(--pico-muted-color);
+  border-top: 1px solid var(--pico-muted-border-color);
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cmdk-hint kbd {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.35rem;
+  background: var(--pico-secondary-background);
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: 0.25rem;
+}
+
+@keyframes cmdk-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+
+/* Remove Pico's default <figure> bottom border / spacing that shows up
+   underneath the summaries table and its pagination. */
+.summaries-table,
+main figure {
+  margin-bottom: 0;
+}
+
+main figure {
+  border-bottom: none !important;
+  padding-bottom: 0;
+}
+
+/* Command palette nav trigger (minimal text link with kbd hint) */
+.cmdk-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0.25rem 0.35rem;
+  background: transparent !important;
+  color: var(--pico-muted-color) !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.cmdk-trigger:hover,
+.cmdk-trigger:focus {
+  color: var(--pico-primary) !important;
+  background: transparent !important;
+}
+
+.cmdk-trigger__kbd {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.35rem;
+  background: var(--pico-secondary-background);
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: 0.3rem;
+  font-family: var(--pico-font-family);
+  color: var(--pico-color);
+  line-height: 1;
+}
+
+.cmdk-trigger .icon-search {
+  display: block;
+}
+
+@media (max-width: 640px) {
+  .cmdk-trigger {
+    padding: 0.25rem 0.25rem;
+  }
+}
+
+
+/* Urdu label acts as a tooltip trigger inline with the h1 */
+.page-header__urdu-btn {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 0.35rem !important;
+  color: inherit !important;
+  box-shadow: none !important;
+  cursor: help;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.page-header__urdu {
+  font-size: 0.75em;
+  color: var(--pico-muted-color);
+}
+
+.page-header__urdu-btn:hover .page-header__urdu,
+.page-header__urdu-btn:focus .page-header__urdu {
+  color: var(--pico-primary);
+}
+
+/* Native popover with CSS anchor positioning: appears to the right of the trigger */
+.definition-popover {
+  max-width: 22rem;
+  padding: 0.75rem 0.9rem;
+  margin: 0;
+  background: var(--pico-card-background-color, var(--pico-background-color));
+  color: var(--pico-color);
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+  font-size: 0.88rem;
+  line-height: 1.5;
+
+  /* Anchor to the Urdu button and place the popover to its right. */
+  position-anchor: --bakwas-anchor;
+  position-area: right span-all;
+  margin-left: 0.5rem;
+}
+
+.definition-popover:popover-open {
+  animation: popover-fade 0.12s ease-out;
+}
+
+.definition-popover::backdrop {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.definition-popover strong {
+  color: var(--pico-color);
+}
+
+@keyframes popover-fade {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Fallback for browsers without CSS anchor positioning: pin near the top-left
+   of the header so it's at least visible and readable. */
+@supports not (position-anchor: --x) {
+  .definition-popover {
+    position: fixed;
+    top: 5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-left: 0;
+  }
+}
+
+
+/* Summarize button: icon + label inline */
+.summary-form__submit {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.summary-form__submit .icon-condense {
+  display: block;
+}
+
+
+/* URL input with inline leading icon */
+.summary-form__url-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.summary-form__url-wrap .icon-link {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--pico-muted-color);
+  pointer-events: none;
+}
+
+.summary-form__url-wrap .summary-form__url {
+  padding-left: 2.35rem !important;
+}
+
+.summary-form__url-wrap:focus-within .icon-link {
+  color: var(--pico-primary);
+}
+
+
+/* Detail-page header: title spans full width, then metadata on the left
+   and a larger YouTube thumbnail pinned to the top-right below it. */
+.summary-header {
+  margin-bottom: 1.5rem;
+}
+
+.summary-header__title {
+  margin: 0 0 1rem;
+}
+
+.summary-header__body {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.summary-header__meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.summary-header__meta p {
+  margin: 0;
+}
+
+.summary-header__thumb-link {
+  flex-shrink: 0;
+  display: block;
+  line-height: 0;
+  text-decoration: none;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.summary-header__thumb-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.summary-header__thumb {
+  display: block;
+  width: 420px;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+/* Stack on narrow screens: thumbnail below the metadata */
+@media (max-width: 768px) {
+  .summary-header__body {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .summary-header__thumb {
+    width: 100%;
+    max-width: 480px;
+  }
+}
+
+
+/* Summaries table: plain title links, no underline or bold */
+.summaries-table .video-cell a {
+  text-decoration: none;
+  font-weight: normal;
+}
+
+.summaries-table .video-cell a:hover,
+.summaries-table .video-cell a:focus {
+  text-decoration: none;
+  color: var(--pico-primary);
 }

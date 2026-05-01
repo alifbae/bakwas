@@ -5,7 +5,7 @@
 {% block content %}
 <main class="container">
   <div class="detail-header-actions">
-    <button id="backButton" class="secondary outline">← Back</button>
+    <a href="{{ url_for('index') }}" id="backButton" class="back-link">← Back</a>
     <form
       method="POST"
       action="{{ url_for('delete_summary_route', summary_id=summary.id) }}"
@@ -24,31 +24,52 @@
     </form>
   </div>
 
-  <header>
-    <h1>{{ summary.title }}</h1>
-    <p>
-      <strong>Creator:</strong> {{ summary.creator }}<br />
-      <strong>Video Date:</strong> {{ summary.video_date or 'Unknown' }}<br />
-      <strong>Summary Length:</strong> {{ summary.summary_length or 'shortest' }}<br />
-      <strong>Model Used:</strong> {{ (summary.model_used or 'N/A').split('/')[-1] }}<br />
-      {% if summary.cost_usd is not none or summary.prompt_tokens is not none %}
-      <strong>Cost:</strong>
-      {% if summary.cost_usd is not none %}
-        ${{ '%.4f' | format(summary.cost_usd) }}
-      {% else %}
-        <em>unknown</em>
+  <header class="summary-header">
+    <h1 class="summary-header__title">{{ summary.title }}</h1>
+    <div class="summary-header__body">
+      <div class="summary-header__meta">
+        <p>
+          <strong>Creator:</strong> {{ summary.creator }}<br />
+          <strong>Video Date:</strong> {{ summary.video_date or 'Unknown' }}<br />
+          <strong>Summary Length:</strong> {{ summary.summary_length or 'shortest' }}<br />
+          <strong>Model Used:</strong> {{ (summary.model_used or 'N/A').split('/')[-1] }}<br />
+          {% if summary.cost_usd is not none or summary.prompt_tokens is not none %}
+          <strong>Cost:</strong>
+          {% if summary.cost_usd is not none %}
+            ${{ '%.4f' | format(summary.cost_usd) }}
+          {% else %}
+            <em>unknown</em>
+          {% endif %}
+          {% if summary.prompt_tokens is not none or summary.completion_tokens is not none %}
+            <small style="color: var(--pico-muted-color)">
+              ({{ summary.prompt_tokens or 0 }} in / {{ summary.completion_tokens or 0 }} out tokens)
+            </small>
+          {% endif %}
+          <br />
+          {% endif %}
+          <strong>Summarized:</strong>
+          <span data-utc-time="{{ summary.created_at }}">{{ summary.created_at }}</span><br />
+          <strong>URL:</strong> <a href="{{ summary.url }}" target="_blank">{{ summary.url }}</a>
+        </p>
+      </div>
+      {% if video_id %}
+      <a
+        href="{{ summary.url }}"
+        target="_blank"
+        rel="noopener"
+        class="summary-header__thumb-link"
+        title="Open on YouTube"
+      >
+        <img
+          src="https://i.ytimg.com/vi/{{ video_id }}/maxresdefault.jpg"
+          onerror="this.onerror=null;this.src='https://i.ytimg.com/vi/{{ video_id }}/hqdefault.jpg';"
+          alt="{{ summary.title }}"
+          class="summary-header__thumb"
+          loading="lazy"
+        />
+      </a>
       {% endif %}
-      {% if summary.prompt_tokens is not none or summary.completion_tokens is not none %}
-        <small style="color: var(--pico-muted-color)">
-          ({{ summary.prompt_tokens or 0 }} in / {{ summary.completion_tokens or 0 }} out tokens)
-        </small>
-      {% endif %}
-      <br />
-      {% endif %}
-      <strong>Summarized:</strong>
-      <span data-utc-time="{{ summary.created_at }}">{{ summary.created_at }}</span><br />
-      <strong>URL:</strong> <a href="{{ summary.url }}" target="_blank">{{ summary.url }}</a>
-    </p>
+    </div>
   </header>
 
   <section>

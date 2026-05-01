@@ -183,6 +183,8 @@ function saveSettings(e) {
 
   closeSettings();
 
+  if (window.toast) toast("Settings saved", { type: "success" });
+
   // If on the homepage, reload so the server re-queries with the new per_page.
   if (window.location.pathname === "/" || window.location.pathname === "") {
     const params = new URLSearchParams(window.location.search);

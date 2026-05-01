@@ -41,7 +41,12 @@ $(document).ready(function () {
     pendingForm = null;
     closeModal("confirm-delete-dialog");
     if (form) {
-      // Submit via native API so the browser performs a normal POST.
+      // Persist a flag so the next page load can show a success toast.
+      try {
+        sessionStorage.setItem("bakwas.flash", "summary-deleted");
+      } catch (_) {
+        /* storage disabled */
+      }
       form.submit();
     }
   });
