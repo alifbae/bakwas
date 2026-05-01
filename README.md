@@ -1,138 +1,147 @@
 # Bakwas
 
-YouTube video transcript summarizer powered by Claude AI. Extract and summarize video transcripts to cut through the "bakwas" (nonsense) and get to the point.
+Skip the bakwas ("nonsense") — extract and summarize YouTube video transcripts with the LLM of your choice.
+
+<p align="center">
+  <img src="docs/images/homepage.png" alt="Bakwas homepage" width="720" />
+</p>
+
+Bakwas is a small, self-hosted Flask app that pulls captions from a YouTube video, sends them through the LLM provider you configure (Anthropic, OpenAI, Google, DeepSeek, Groq, OpenRouter, a local Ollama, or any OpenAI-compatible endpoint), and stores the summary in a local SQLite database so you can revisit it later.
 
 ## Features
 
-- **YouTube Integration** - Automatically extracts English subtitles from any YouTube video
-- **AI-Powered Summaries** - Uses Claude AI models for intelligent summarization
-- **Multiple Summary Styles** - Choose between concise bullet points or comprehensive paragraphs
-- **History Tracking** - Stores all summaries in a local SQLite database
-- **Dark/Light Theme** - Beautiful UI with Pico CSS and theme switching
-- **Rate Limited** - Built-in protection against API abuse
-- **Docker Ready** - Production-ready containerization with health checks
+- Works with any LLM via a pluggable provider registry — OpenAI-compatible endpoints are fully supported
+- Concise (bulleted) or comprehensive (paragraph) summary styles
+- Server-side sorting, pagination, and URL-based caching so you don't pay to regenerate the same summary twice
+- Settings modal for default model, default summary style, and items-per-page preferences
+- Dark and light themes
+- Rate limiting on the expensive endpoint only, disabled automatically in local dev
+- Ships as a single Docker container with a SQLite volume
 
-## Quick Start
+## Getting Started
 
-### Local Development
+Bakwas runs as a Docker container. Pull or build the image, provide at least one provider API key, and start it up.
+
+### Running with Docker
 
 ```bash
-# Clone the repository
+# Clone the repo
 git clone https://github.com/yourusername/bakwas.git
 cd bakwas
 
-# Create and activate virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+# Configure your provider keys
+cp .env.example .env
+# Edit .env and set at least ANTHROPIC_API_KEY (or another provider key)
 
-# Install dependencies
+# Start the container
+docker-compose up -d
+```
+
+Bakwas is now available at [http://localhost:5000](http://localhost:5000).
+
+### Docker Compose example
+
+The repo ships with a working `docker-compose.yml`. Here's what the minimal version looks like:
+
+```yaml
+services:
+  bakwas:
+    build: .
+    container_name: bakwas-app
+    ports:
+      - "5000:5000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - DEBUG=${DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY}
+      - RATE_LIMIT_SUMMARIZE=${RATE_LIMIT_SUMMARIZE:-30 per hour}
+    volumes:
+      - ./data:/app/data
+      # Optional: override the shipped provider config without rebuilding
+      # - ./config/providers.local.yaml:/app/config/providers.local.yaml:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+```
+
+Compose auto-loads `.env` from the project directory, so values flow into the container through the `${VAR}` interpolations above. Only the variables listed in `environment:` are visible to the app — add new ones when you register custom providers.
+
+### Running locally without Docker
+
+Requires Python 3.12 or newer.
+
+```bash
+python -m venv .venv
+source .venv/bin/activate    # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# Set up environment variables
 cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
+# Set at least one provider key
 
-# Run the application
 python run.py
 ```
 
-Visit http://localhost:5000
-
-### Docker Deployment
-
-```bash
-# Set up environment
-cp .env.example .env
-# Edit .env with your configuration
-
-# Build and run
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Check health
-curl http://localhost:5000/health
-```
+Visit [http://localhost:5000](http://localhost:5000).
 
 ## Configuration
 
-### Environment Variables
+Bakwas is configured in two places:
 
-Create a `.env` file in the project root:
+- `.env` — API keys, server settings, rate limits.
+- `config/providers.yaml` — the LLM provider registry (ships with sensible defaults).
 
-```env
-# Required
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
+### Environment variables
 
-# Optional
-PORT=5000
-DEBUG=False
-SECRET_KEY=generate_with_command_below
+All variables are set in `.env` and loaded at startup. At least one provider API key must be set, otherwise the model dropdown is empty.
+
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `ANTHROPIC_API_KEY` | Yes* | — | Anthropic API key. Required unless you enable a different provider in `providers.yaml`. |
+| `OPENAI_API_KEY` | No | — | Enables the OpenAI provider. |
+| `GEMINI_API_KEY` | No | — | Enables the Google Gemini provider. |
+| `OPENROUTER_API_KEY` | No | — | Enables OpenRouter (gateway to many models). |
+| `DEEPSEEK_API_KEY` | No | — | Enables DeepSeek. |
+| `GROQ_API_KEY` | No | — | Enables Groq. |
+| `PORT` | No | `5000` | Flask server port (ignored by the default Docker setup, which binds 5000:5000). |
+| `DEBUG` | No | `False` | `true` enables debug mode, verbose LLM logs, and disables rate limits. |
+| `FLASK_ENV` | No | — | Set to `development` to flag as local (rate-limit exempt). |
+| `LOCAL` | No | `False` | Alternative flag that marks the app as local. |
+| `SECRET_KEY` | No | random per start | Flask session secret. Set a stable value in production. Generate with `python -c "import secrets; print(secrets.token_hex(32))"`. |
+| `RATE_LIMIT_SUMMARIZE` | No | `30 per hour` | Rate limit for `/summarize` only. Accepts any [Flask-Limiter](https://flask-limiter.readthedocs.io/) rule, e.g. `"60 per hour"` or `"5 per minute;100 per day"`. |
+
+<small>\* "Required" means at least one enabled provider must have its API key set. The default config ships with Anthropic flagged as the default provider, so `ANTHROPIC_API_KEY` is the simplest path. Swap to any other provider in `providers.yaml` and a different key becomes the required one.</small>
+
+### Providers
+
+Providers are registered in `config/providers.yaml`, which ships with sensible defaults for Anthropic, OpenAI, OpenRouter, Google Gemini, DeepSeek, and Groq. Commented examples for Ollama (local) and a custom OpenAI-compatible proxy are included for reference.
+
+A provider is hidden from the UI automatically when its API key is missing, so it's safe to leave entries in place for providers you aren't using.
+
+To add or customize providers without editing the tracked file, create `config/providers.local.yaml`. It takes precedence over the shipped default and is git-ignored.
+
+If you register a new provider in `providers.local.yaml` that references a new env var (e.g. `MY_PROXY_API_KEY`), add a matching line to the `environment:` block in `docker-compose.yml`:
+
+```yaml
+environment:
+  - MY_PROXY_API_KEY=${MY_PROXY_API_KEY:-}
 ```
 
-Generate a secure SECRET_KEY:
+### Rate limiting
 
-```bash
-python -c "import secrets; print(secrets.token_hex(32))"
-```
+Only `/summarize` is rate limited because it's the expensive endpoint (LLM call + caption fetch). Everything else — homepage, `/models`, `/health`, detail view, delete — runs unthrottled. Override the default via `RATE_LIMIT_SUMMARIZE`. When `DEBUG=true`, `FLASK_ENV=development`, or `LOCAL=true`, all rate limiting is skipped.
 
-### Rate Limits
+### Reverse proxy
 
-Default rate limits per IP address:
-
-- Global: 200 requests/day, 50 requests/hour
-- /summarize endpoint: 10 requests/hour
-
-Adjust in `src/app.py` if needed.
-
-## Architecture
-
-```
-Bakwas/
-├── src/                    # Application source code
-│   ├── __init__.py        # Package initialization
-│   ├── app.py             # Flask application and routes
-│   ├── database.py        # SQLite database operations
-│   ├── subtitles.py       # YouTube subtitle extraction
-│   ├── summarizer.py      # AI summarization logic
-│   └── utils.py           # Helper functions
-├── templates/             # Jinja2 HTML templates
-├── static/                # CSS, JavaScript, images
-├── data/                  # SQLite database (created at runtime)
-├── run.py                 # Application entry point
-├── Dockerfile             # Docker container definition
-├── docker-compose.yml     # Docker Compose configuration
-├── requirements.txt       # Python dependencies
-└── README.md             # This file
-```
-
-## Security
-
-### Implemented Security Features
-
-- **Rate Limiting** - Prevents API abuse with per-IP limits
-- **URL Validation** - Only accepts YouTube URLs
-- **SQL Injection Protection** - Parameterized queries throughout
-- **Security Headers** - CSP, X-Frame-Options via Flask-Talisman
-- **Non-Root Docker User** - Container runs as unprivileged user
-- **Error Sanitization** - Generic errors to clients, detailed logs server-side
-- **Health Check Endpoint** - `/health` for monitoring
-
-### Pre-Deployment Checklist
-
-- [ ] Set `DEBUG=False` in production
-- [ ] Generate and set unique `SECRET_KEY`
-- [ ] Secure your `ANTHROPIC_API_KEY`
-- [ ] Set up HTTPS/TLS (use reverse proxy like Nginx)
-- [ ] Configure firewall rules
-- [ ] Enable container security scanning
-- [ ] Set up monitoring and logging
-- [ ] Configure automated backups
-
-### Reverse Proxy Setup
-
-Example Nginx configuration for HTTPS:
+Example Nginx configuration if you're putting Bakwas behind HTTPS:
 
 ```nginx
 server {
@@ -152,182 +161,58 @@ server {
 }
 ```
 
-## API Endpoints
+## Monitoring
 
-### GET /
+```bash
+# HTTP health check
+curl http://localhost:5000/health
 
-Homepage with summary form and history table
-
-### GET /models
-
-Returns available Claude models
-
-```json
-{
-  "models": [
-    {
-      "id": "anthropic/claude-sonnet-4-6",
-      "name": "Claude Sonnet 4",
-      "default": true
-    }
-  ]
-}
-```
-
-### POST /summarize
-
-Create a new summary
-
-**Parameters:**
-
-- `url` (required) - YouTube video URL
-- `model` (optional) - Claude model ID
-- `length` (optional) - `concise` or `comprehensive`
-
-**Response:**
-
-```json
-{
-  "summary": "Markdown formatted summary...",
-  "title": "Video Title",
-  "creator": "Channel Name",
-  "video_date": "2026-04-29",
-  "caption_length": 15000,
-  "model_used": "anthropic/claude-sonnet-4-6",
-  "summary_length": "comprehensive"
-}
-```
-
-### GET /summary/:id
-
-View a specific summary
-
-### POST /summary/:id/delete
-
-Delete a summary
-
-### GET /health
-
-Health check endpoint
-
-```json
-{
-  "status": "healthy"
-}
+# Docker health status
+docker inspect bakwas-app | grep -A 10 Health
 ```
 
 ## Development
 
-### Project Structure
-
-The application follows a modular structure with separation of concerns:
-
-- **app.py** - Flask routes and application setup
-- **database.py** - All database operations
-- **subtitles.py** - YouTube integration and caption extraction
-- **summarizer.py** - AI model interaction
-- **utils.py** - Configuration and helper functions
-
-### Hot Reload
-
-Set `DEBUG=True` in your `.env` file for auto-reload during development:
+Set `DEBUG=True` in `.env` and Flask will auto-reload on changes to Python files, templates, and static assets:
 
 ```bash
-# In .env
+# .env
 DEBUG=True
+FLASK_ENV=development
 
-# Run locally
 python run.py
 ```
 
-Flask will automatically reload when you modify Python files, templates, or static files.
+## Project layout
 
-### Database
-
-SQLite database is created automatically at `data/summaries.db` with the following schema:
-
-```sql
-CREATE TABLE summaries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    url TEXT NOT NULL UNIQUE,
-    title TEXT,
-    creator TEXT,
-    video_date TEXT,
-    subtitles TEXT,
-    summary TEXT NOT NULL,
-    model_used TEXT,
-    summary_length TEXT DEFAULT 'shortest',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
 ```
-
-## Monitoring
-
-### Health Checks
-
-```bash
-# HTTP endpoint
-curl http://localhost:5000/health
-
-# Docker health check (automatic)
-docker inspect bakwas-app | grep Health -A 10
-```
-
-### Logs
-
-```bash
-# Docker logs
-docker-compose logs -f
-
-# Specific container
-docker-compose logs -f bakwas
-```
-
-### Database Backup
-
-```bash
-# Backup
-cp ./data/summaries.db ./data/summaries.db.backup
-
-# Restore
-cp ./data/summaries.db.backup ./data/summaries.db
-docker-compose restart
+bakwas/
+├── src/                   # Flask app, DB, summarizer, providers, subtitles
+├── templates/             # Jinja2 templates + partials
+├── static/                # CSS, JavaScript, images
+├── config/
+│   └── providers.yaml     # Shipped provider registry (edit providers.local.yaml to override)
+├── data/                  # SQLite database (bind-mounted in Docker)
+├── run.py                 # Entry point
+├── Dockerfile
+├── docker-compose.yml
+└── requirements.txt
 ```
 
 ## Troubleshooting
 
-### Container won't start
+**Rate limit errors.** Increase `RATE_LIMIT_SUMMARIZE` in `.env` or set `DEBUG=True` for a single run.
 
-```bash
-docker-compose logs bakwas
-```
+**No models in the dropdown.** You haven't set a provider API key that matches any enabled entry in `config/providers.yaml`. Set at least `ANTHROPIC_API_KEY`, or edit the provider registry.
 
-### Rate limit errors
+**Permission errors on the database.** `chmod 755 ./data` from the project root.
 
-Increase limits in `src/app.py`:
-
-```python
-@limiter.limit("20 per hour")  # Increase from default 10
-```
-
-### Template not found
-
-Ensure templates are in the `templates/` directory at project root, not in `src/templates/`.
-
-### Permission errors
-
-```bash
-chmod 755 ./data
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+**Template not found.** Templates must live at `templates/` in the project root, not inside `src/templates/`.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).
 
 ## Disclaimer
 
-AI-generated summaries may contain inaccuracies. Always verify important information from the original source.
+AI-generated summaries may contain inaccuracies. Always verify important information against the original video.

@@ -26,7 +26,12 @@ from src.database import (
 from src.providers import list_models as list_provider_models
 from src.subtitles import canonicalize_youtube_url, get_video_info
 from src.summarizer import summarize_text
-from src.utils import get_port, is_debug_mode, is_local
+from src.utils import (
+    get_port,
+    get_rate_limit_summarize,
+    is_debug_mode,
+    is_local,
+)
 
 # Load environment variables
 load_dotenv()
@@ -61,15 +66,16 @@ csp = {
 }
 Talisman(app, content_security_policy=csp, force_https=False)
 
-# Security: Rate limiting
-# Skip all default limits when running locally so development isn't throttled.
+# Rate limiting: only applied to expensive endpoints (see @limiter.limit below).
+# No global default limits, so cheap endpoints like /, /models, /health, and
+# static assets are never throttled. Local/dev is always exempt.
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
-    default_limits_exempt_when=is_local,
     storage_uri="memory://",
 )
+
+SUMMARIZE_RATE_LIMIT = get_rate_limit_summarize()
 
 # Initialize database
 init_db()
@@ -84,8 +90,8 @@ if is_debug_mode():
 AVAILABLE_MODELS = list_provider_models()
 if not AVAILABLE_MODELS:
     print(
-        "[bakwas] No enabled providers found. Copy config/providers.yaml.example "
-        "to config/providers.yaml and set the matching API keys in .env."
+        "[bakwas] No enabled providers. Set at least one provider API key in .env "
+        "(e.g. ANTHROPIC_API_KEY). See README.md for the full list."
     )
 
 
@@ -164,7 +170,7 @@ def get_models():
 
 
 @app.route("/summarize", methods=["POST"])
-@limiter.limit("10 per hour", exempt_when=is_local)  # Rate limit: 10 summaries per hour per IP
+@limiter.limit(SUMMARIZE_RATE_LIMIT, exempt_when=is_local)
 def summarize():
     """Main endpoint to summarize a YouTube video"""
     url = request.form.get("url")
@@ -292,7 +298,6 @@ def delete_summary_route(summary_id):
 
 
 @app.route("/health")
-@limiter.exempt
 def health():
-    """Health check endpoint for monitoring (always exempt from rate limits)"""
+    """Health check endpoint for monitoring."""
     return jsonify({"status": "healthy"}), 200

@@ -40,7 +40,12 @@ except ImportError:  # pragma: no cover - dependency check at import time
 
 
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent
+# Load order: user override first, then the shipped default.
+# `providers.local.yaml` is git-ignored so users can customize without
+# conflicting with upstream updates to `providers.yaml`.
 CONFIG_PATHS = [
+    PROJECT_ROOT / "config" / "providers.local.yaml",
+    PROJECT_ROOT / "config" / "providers.local.yml",
     PROJECT_ROOT / "config" / "providers.yaml",
     PROJECT_ROOT / "config" / "providers.yml",
 ]

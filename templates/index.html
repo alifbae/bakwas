@@ -19,9 +19,15 @@ block content %}
   </header>
 
   <section>
-    <form id="summaryForm">
-      <div class="grid">
-        <input type="text" id="url" placeholder="Paste YouTube URL" required />
+    <form id="summaryForm" class="summary-form">
+      <input
+        type="text"
+        id="url"
+        class="summary-form__url"
+        placeholder="Paste YouTube URL"
+        required
+      />
+      <div class="summary-form__controls">
         <select id="model" name="model" required>
           <option value="">Loading models...</option>
         </select>

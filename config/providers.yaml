@@ -1,0 +1,87 @@
+# Bakwas provider registry
+#
+# This is the shipped default. It is safe to commit: it contains no secrets.
+# Each provider is silently hidden from the UI when its API key is missing,
+# so you only need to set keys in .env for the providers you want to use.
+#
+# To customize without conflicting with future updates, copy this file to
+# config/providers.local.yaml and edit that (it's git-ignored). When both
+# files exist the shipped default is loaded.
+#
+# Field reference:
+#   id            Unique identifier (also used in logs).
+#   label         Display name shown in the model dropdown.
+#   type          LiteLLM provider prefix. Use `openai` for any OpenAI-compatible
+#                 endpoint that isn't a named provider.
+#   api_key_env   Env var holding the API key. Leave unset for keyless (local) providers.
+#   api_base      Override the default API base URL. Required for custom endpoints.
+#   default       If true, this provider's default model becomes the app default.
+#   models        Explicit list: `[id, ...]` or `[{id, name, default}, ...]`.
+#                 When omitted and models_endpoint is `auto`, models are discovered at startup.
+#   models_endpoint  `auto` (default) enables runtime discovery where supported.
+
+providers:
+  - id: anthropic
+    label: Anthropic
+    type: anthropic
+    api_key_env: ANTHROPIC_API_KEY
+    default: true
+    models_endpoint: auto
+
+  - id: openai
+    label: OpenAI
+    type: openai
+    api_key_env: OPENAI_API_KEY
+    models_endpoint: auto
+
+  - id: openrouter
+    label: OpenRouter
+    type: openrouter
+    api_key_env: OPENROUTER_API_KEY
+    models_endpoint: auto
+
+  - id: gemini
+    label: Google Gemini
+    type: gemini
+    api_key_env: GEMINI_API_KEY
+    models:
+      - id: gemini-2.5-pro
+        name: Gemini 2.5 Pro
+        default: true
+      - id: gemini-2.5-flash
+        name: Gemini 2.5 Flash
+
+  - id: deepseek
+    label: DeepSeek
+    type: deepseek
+    api_key_env: DEEPSEEK_API_KEY
+    models:
+      - id: deepseek-chat
+        name: DeepSeek Chat
+      - id: deepseek-reasoner
+        name: DeepSeek Reasoner
+
+  - id: groq
+    label: Groq
+    type: groq
+    api_key_env: GROQ_API_KEY
+    models_endpoint: auto
+
+  # Local Ollama: enabled automatically when the daemon is reachable on localhost.
+  # Kept disabled by default to avoid surprising users who don't run Ollama.
+  # Uncomment to enable.
+  # - id: ollama-local
+  #   label: Ollama (local)
+  #   type: ollama
+  #   api_base: http://localhost:11434
+  #   models_endpoint: auto
+
+  # Example custom OpenAI-compatible proxy. Uncomment and edit to add your own.
+  # - id: my-proxy
+  #   label: My Proxy
+  #   type: openai
+  #   api_key_env: MY_PROXY_API_KEY
+  #   api_base: https://my-proxy.example.com/v1
+  #   models:
+  #     - id: gpt-4o-mini
+  #       name: GPT-4o mini via proxy

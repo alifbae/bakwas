@@ -183,10 +183,30 @@ button,
   filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4));
 }
 
-/* Form grid layout */
-#summaryForm .grid {
-  grid-template-columns: 2fr 1fr 1fr auto;
+/* Summary form layout: URL on its own full-width row, controls underneath */
+.summary-form {
+  display: flex;
+  flex-direction: column;
   gap: 0.5rem;
+}
+
+.summary-form__url {
+  width: 100%;
+  margin: 0;
+}
+
+.summary-form__controls {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+  max-width: 36rem;
+  margin: 0 auto;
+}
+
+.summary-form__controls select,
+.summary-form__controls button {
+  margin: 0;
 }
 
 /* Small button for table actions */
@@ -360,7 +380,7 @@ footer a:hover {
 
 /* Phone breakpoint: collapse to just Video + Actions, with creator under title */
 @media (max-width: 640px) {
-  #summaryForm .grid {
+  .summary-form__controls {
     grid-template-columns: 1fr;
   }
 

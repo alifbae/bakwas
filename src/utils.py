@@ -27,3 +27,14 @@ def is_local():
 def get_port():
     """Get the port from environment variable with default"""
     return int(os.getenv("PORT", 5000))
+
+
+def get_rate_limit_summarize():
+    """
+    Return the rate-limit string for the /summarize endpoint.
+
+    Configured via the RATE_LIMIT_SUMMARIZE env var. Supports any expression
+    Flask-Limiter accepts, e.g. "30 per hour", "5 per minute;100 per day".
+    Defaults to a fairly tolerant "30 per hour" so casual use doesn't hit 429s.
+    """
+    return os.getenv("RATE_LIMIT_SUMMARIZE", "30 per hour").strip() or "30 per hour"
