@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% block title %}{{ summary.title }} - Bakwas{% endblock %} {% block
+{% extends "base.html" %} {% from "partials/icons.html" import icon_trash %} {% block title %}{{ summary.title }} - Bakwas{% endblock %} {% block
 content %}
 <main class="container">
   <div class="detail-header-actions">
@@ -6,10 +6,18 @@ content %}
     <form
       method="POST"
       action="{{ url_for('delete_summary_route', summary_id=summary.id) }}"
-      onsubmit="return confirm('Are you sure you want to delete this summary?');"
       style="margin: 0"
     >
-      <button type="submit" class="secondary outline">⌫</button>
+      <button
+        type="submit"
+        class="secondary outline delete-btn"
+        title="Delete"
+        aria-label="Delete summary"
+        data-confirm-delete
+        data-confirm-message="Delete &ldquo;{{ summary.title or 'this summary' }}&rdquo;? This action can&rsquo;t be undone."
+      >
+        {{ icon_trash(18) }}
+      </button>
     </form>
   </div>
 
@@ -44,6 +52,15 @@ content %}
     </article>
   </section>
 
+  <!-- Server-rendered values consumed by static/js/detail.js -->
+  <div
+    id="detail-meta"
+    hidden
+    data-current-model="{{ summary.model_used or '' }}"
+    data-current-length="{{ summary.summary_length or 'short' }}"
+    data-index-url="{{ url_for('index') }}"
+  ></div>
+
   <!-- Regenerate Modal -->
   <dialog id="regenerateModal">
     <article>
@@ -51,7 +68,8 @@ content %}
         <button
           aria-label="Close"
           rel="prev"
-          onclick="document.getElementById('regenerateModal').close()"
+          data-close-regenerate
+          type="button"
         ></button>
         <h3>Regenerate Summary</h3>
       </header>
@@ -65,15 +83,13 @@ content %}
         <label for="regenerate-length">
           Summary Style
           <select id="regenerate-length" name="length" required>
-            <option value="concise">Concise (Bullet Points)</option>
-            <option value="comprehensive" selected>Comprehensive (Paragraphs)</option>
+            <option value="concise">Concise</option>
+            <option value="comprehensive" selected>Comprehensive</option>
           </select>
         </label>
       </form>
       <footer>
-        <button class="secondary" onclick="document.getElementById('regenerateModal').close()">
-          Cancel
-        </button>
+        <button class="secondary" data-close-regenerate type="button">Cancel</button>
         <button id="confirmRegenerate">Regenerate</button>
       </footer>
     </article>
@@ -89,122 +105,5 @@ content %}
   </section>
 </main>
 {% endblock %} {% block extra_scripts %}
-<script>
-  $(document).ready(function () {
-    // Render markdown summary from JSON script tag
-    const $summaryContent = $("#summary-content");
-    const $summaryData = $("#summary-data");
-
-    function renderSummary(summaryText) {
-      try {
-        const renderedMarkdown = marked.parse(summaryText);
-        $summaryContent.html(renderedMarkdown);
-      } catch (e) {
-        console.error("Error parsing summary:", e);
-        $summaryContent.html("<p><mark>Error rendering summary: " + e.message + "</mark></p>");
-      }
-    }
-
-    if ($summaryData.length > 0) {
-      try {
-        const summaryText = JSON.parse($summaryData.text());
-        console.log("Loaded summary successfully");
-        renderSummary(summaryText);
-      } catch (e) {
-        console.error("Error parsing summary:", e);
-        $summaryContent.html("<p><mark>Error rendering summary: " + e.message + "</mark></p>");
-      }
-    } else {
-      console.error("No summary data found");
-      $summaryContent.html("<p><mark>No summary data available</mark></p>");
-    }
-
-    // Load models into regenerate modal
-    function loadRegenerateModels() {
-      $.ajax({
-        url: "/models",
-        method: "GET",
-        success: function (data) {
-          const $modelSelect = $("#regenerate-model");
-          $modelSelect.empty();
-
-          const currentModel = "{{ summary.model_used }}";
-
-          $.each(data.models, function (index, model) {
-            const $option = $("<option>").val(model.id).text(model.name);
-
-            if (model.id === currentModel || model.default) {
-              $option.prop("selected", true);
-            }
-
-            $modelSelect.append($option);
-          });
-        },
-      });
-    }
-
-    loadRegenerateModels();
-
-    // Set current length in modal
-    const currentLength = "{{ summary.summary_length }}" || "short";
-    $("#regenerate-length").val(currentLength);
-
-    // Open regenerate modal
-    $("#regenerateBtn").on("click", function () {
-      document.getElementById("regenerateModal").showModal();
-    });
-
-    // Confirm regeneration
-    $("#confirmRegenerate").on("click", function () {
-      const $urlData = $("#video-url");
-
-      if ($urlData.length === 0) {
-        alert("Video URL not found");
-        return;
-      }
-
-      const videoUrl = JSON.parse($urlData.text());
-      const selectedModel = $("#regenerate-model").val();
-      const selectedLength = $("#regenerate-length").val();
-
-      // Close modal
-      document.getElementById("regenerateModal").close();
-
-      // Show loading state
-      $summaryContent.html('<p aria-busy="true">Regenerating summary with AI...</p>');
-
-      $.ajax({
-        url: "/summarize",
-        method: "POST",
-        data: {
-          url: videoUrl,
-          model: selectedModel,
-          length: selectedLength,
-        },
-        success: function (data) {
-          renderSummary(data.summary);
-
-          // Show success message
-          const $success = $("<p>")
-            .attr("role", "status")
-            .html("<mark>✓ Summary regenerated and saved!</mark>");
-          $summaryContent.prepend($success);
-          setTimeout(() => $success.fadeOut(), 3000);
-
-          // Reload page to update metadata
-          setTimeout(() => location.reload(), 3500);
-        },
-        error: function (xhr) {
-          const error = xhr.responseJSON ? xhr.responseJSON.error : "Unknown error";
-          $summaryContent.html(`<p><mark>Error: ${error}</mark></p>`);
-        },
-      });
-    });
-
-    // Back button handler
-    $("#backButton").on("click", function () {
-      window.location.href = '{{ url_for("index") }}';
-    });
-  });
-</script>
+<script src="{{ url_for('static', filename='js/detail.js') }}"></script>
 {% endblock %}

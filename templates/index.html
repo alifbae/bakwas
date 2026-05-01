@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% block title %}<s>Bakwas</s> - YouTube Video Summarizer{% endblock %} {%
+{% extends "base.html" %} {% from "partials/icons.html" import icon_trash %} {% block title %}Bakwas - YT Summarizer{% endblock %} {%
 block content %}
 <main class="container">
   <header class="page-header">
@@ -15,7 +15,7 @@ block content %}
         ><small style="font-size: 0.5em; color: #888">بکواس</small></a
       >
     </h1>
-    <p>Skip the bakwas, summarize YouTube video transcripts with AI</p>
+    <p>Summarize YouTube video transcripts with AI</p>
   </header>
 
   <section>
@@ -26,7 +26,7 @@ block content %}
           <option value="">Loading models...</option>
         </select>
         <select id="length" name="length" required>
-          <option value="concise">Concise (Bullet Points)</option>
+          <option value="concise">Concise</option>
           <option value="comprehensive" selected>Comprehensive</option>
         </select>
         <button type="submit">Summarize</button>
@@ -37,36 +37,52 @@ block content %}
   </section>
 
   <section>
-    <h4>Previous Summaries ({{ summaries|length }})</h4>
+    {% set effective_per_page = pagination.per_page if pagination.per_page else 'all' %}
+    {% macro sort_header(label, key, classes="") -%}
+      {% set is_active = (sort_by == key) %}
+      {% set next_dir = 'asc' if (is_active and sort_dir == 'desc') else ('desc' if is_active else 'desc') %}
+      {% set arrow = '' %}
+      {% if is_active %}
+        {% set arrow = ' ↓' if sort_dir == 'desc' else ' ↑' %}
+      {% endif %}
+      <th class="sortable-th {{ classes }}"{% if is_active %} aria-sort="{{ 'descending' if sort_dir == 'desc' else 'ascending' }}"{% endif %}>
+        <a href="{{ url_for('index', sort=key, dir=next_dir, page=1, per_page=effective_per_page) }}"
+           class="sort-link{% if is_active %} active{% endif %}">
+          {{ label }}<span class="sort-arrow">{{ arrow }}</span>
+        </a>
+      </th>
+    {%- endmacro %}
+
+    <div class="summaries-header">
+      <h4>Previous Summaries ({{ pagination.total }})</h4>
+    </div>
 
     {% if summaries %}
     <figure>
-      <table role="grid">
+      <table role="grid" class="summaries-table">
         <thead>
           <tr>
-            <th>Video</th>
-            <th>Creator</th>
-            <th>Date</th>
-            <th>Length</th>
-            <th>Model</th>
-            <th>Created</th>
+            {{ sort_header('Video', 'title') }}
+            {{ sort_header('Creator', 'creator', 'col-hide-sm') }}
+            {{ sort_header('Length', 'summary_length', 'col-hide-sm') }}
+            {{ sort_header('Created', 'created_at', 'col-hide-md') }}
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {% for summary in summaries %}
           <tr>
-            <td>
+            <td class="video-cell">
               <a href="{{ url_for('view_summary', summary_id=summary.id) }}">
                 <strong>{{ summary.title or 'Untitled' }}</strong>
               </a>
-              <br /><small>{{ summary.summary_preview }}...</small>
+              <div class="video-meta-sm">
+                <small>{{ summary.creator or 'Unknown' }}</small>
+              </div>
             </td>
-            <td><small>{{ summary.creator or 'Unknown' }}</small></td>
-            <td><small>{{ summary.video_date or 'N/A' }}</small></td>
-            <td><kbd>{{ summary.summary_length or 'shortest' }}</kbd></td>
-            <td><small>{{ (summary.model_used or 'N/A').split('/')[-1] }}</small></td>
-            <td>
+            <td class="col-hide-sm"><small>{{ summary.creator or 'Unknown' }}</small></td>
+            <td class="col-hide-sm"><kbd>{{ summary.summary_length or 'shortest' }}</kbd></td>
+            <td class="col-hide-md">
               <small data-utc-time="{{ summary.created_at }}">{{ summary.created_at }}</small>
             </td>
             <td>
@@ -74,10 +90,16 @@ block content %}
                 method="POST"
                 action="{{ url_for('delete_summary_route', summary_id=summary.id) }}"
                 style="display: inline"
-                onsubmit="return confirm('Delete this summary?');"
               >
-                <button type="submit" class="secondary outline small icon-only" title="Delete">
-                  ⌫
+                <button
+                  type="submit"
+                  class="secondary outline small icon-only delete-btn"
+                  title="Delete"
+                  aria-label="Delete summary"
+                  data-confirm-delete
+                  data-confirm-message="Delete &ldquo;{{ summary.title or 'this summary' }}&rdquo;? This action can&rsquo;t be undone."
+                >
+                  {{ icon_trash(16) }}
                 </button>
               </form>
             </td>
@@ -86,88 +108,39 @@ block content %}
         </tbody>
       </table>
     </figure>
+
+    {% if pagination.per_page and pagination.total_pages > 1 %}
+    <nav class="pagination" aria-label="Summaries pagination">
+      {% set p = pagination.page %}
+      {% set last = pagination.total_pages %}
+      <a
+        class="page-link{% if p <= 1 %} disabled{% endif %}"
+        href="{{ url_for('index', sort=sort_by, dir=sort_dir, page=1, per_page=pagination.per_page) }}"
+        aria-label="First page"
+      >«</a>
+      <a
+        class="page-link{% if p <= 1 %} disabled{% endif %}"
+        href="{{ url_for('index', sort=sort_by, dir=sort_dir, page=p-1, per_page=pagination.per_page) }}"
+        aria-label="Previous page"
+      >‹</a>
+      <span class="page-status"><small>Page {{ p }} of {{ last }}</small></span>
+      <a
+        class="page-link{% if p >= last %} disabled{% endif %}"
+        href="{{ url_for('index', sort=sort_by, dir=sort_dir, page=p+1, per_page=pagination.per_page) }}"
+        aria-label="Next page"
+      >›</a>
+      <a
+        class="page-link{% if p >= last %} disabled{% endif %}"
+        href="{{ url_for('index', sort=sort_by, dir=sort_dir, page=last, per_page=pagination.per_page) }}"
+        aria-label="Last page"
+      >»</a>
+    </nav>
+    {% endif %}
     {% else %}
     <p><em>No summaries yet. Create one above!</em></p>
     {% endif %}
   </section>
 </main>
 {% endblock %} {% block extra_scripts %}
-<script>
-  $(document).ready(function () {
-    // Load available models
-    function loadModels() {
-      $.ajax({
-        url: "/models",
-        method: "GET",
-        success: function (data) {
-          const $modelSelect = $("#model");
-          $modelSelect.empty();
-
-          $.each(data.models, function (index, model) {
-            const $option = $("<option>").val(model.id).text(model.name);
-
-            if (model.default) {
-              $option.prop("selected", true);
-            }
-
-            $modelSelect.append($option);
-          });
-        },
-        error: function () {
-          $("#model").html('<option value="">Error loading models</option>');
-        },
-      });
-    }
-
-    loadModels();
-
-    // Form submission
-    $("#summaryForm").on("submit", function (e) {
-      e.preventDefault();
-
-      const url = $("#url").val();
-      const model = $("#model").val();
-      const length = $("#length").val();
-      const $resultDiv = $("#result");
-
-      $resultDiv.show().html('<p aria-busy="true">Extracting captions and summarizing...</p>');
-
-      $.ajax({
-        url: "/summarize",
-        method: "POST",
-        data: {
-          url: url,
-          model: model,
-          length: length,
-        },
-        success: function (data) {
-          const summaryHtml = marked.parse(data.summary);
-          const modelName = data.model_used.split("/")[1];
-
-          // Build the result HTML safely
-          const $header = $("<header>").html(`
-                        <strong>Video:</strong> ${data.title}<br>
-                        <strong>Creator:</strong> ${data.creator}<br>
-                        <strong>Date:</strong> ${data.video_date}<br>
-                        <strong>Length:</strong> <kbd>${data.summary_length}</kbd>
-                        <strong>Model:</strong> <small>${modelName}</small>
-                    `);
-
-          const $content = $('<div class="markdown-content">').html(summaryHtml);
-
-          const $footer = $("<footer>").html(`
-                        <small>${data.caption_length} words extracted • Saved to database</small><br>
-                        <small><em>Refresh page to see in table below</em></small>
-                    `);
-
-          $resultDiv.empty().append($header).append($content).append($footer);
-        },
-        error: function (xhr) {
-          const error = xhr.responseJSON ? xhr.responseJSON.error : "Unknown error";
-          $resultDiv.html(`<p><mark>Error: ${error}</mark></p>`);
-        },
-      });
-    });
-  });
-</script>
+<script src="{{ url_for('static', filename='js/index.js') }}"></script>
 {% endblock %}

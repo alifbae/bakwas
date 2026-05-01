@@ -18,13 +18,14 @@ from flask_talisman import Talisman
 from src.database import (
     delete_summary,
     get_all_summaries,
+    get_cached_summary,
     get_summary_by_id,
     init_db,
     save_summary,
 )
-from src.subtitles import get_video_info
+from src.subtitles import canonicalize_youtube_url, get_video_info
 from src.summarizer import fetch_anthropic_models, summarize_text
-from src.utils import get_port, is_debug_mode
+from src.utils import get_port, is_debug_mode, is_local
 
 # Load environment variables
 load_dotenv()
@@ -60,10 +61,12 @@ csp = {
 Talisman(app, content_security_policy=csp, force_https=False)
 
 # Security: Rate limiting
+# Skip all default limits when running locally so development isn't throttled.
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"],
+    default_limits_exempt_when=is_local,
     storage_uri="memory://",
 )
 
@@ -80,9 +83,70 @@ ANTHROPIC_MODELS = fetch_anthropic_models()
 
 @app.route("/")
 def index():
-    """Homepage showing all summaries"""
-    summaries = get_all_summaries()
-    return render_template("index.html", summaries=summaries)
+    """Homepage showing all summaries with server-side sorting and pagination."""
+    # Parse & sanitize query params
+    sort_by = request.args.get("sort", "created_at")
+    sort_dir = request.args.get("dir", "desc")
+
+    try:
+        page = int(request.args.get("page", 1))
+    except (TypeError, ValueError):
+        page = 1
+
+    per_page_raw = request.args.get("per_page")
+    per_page = None
+    if per_page_raw is not None:
+        # Explicit "all" keyword disables pagination.
+        if str(per_page_raw).lower() == "all":
+            per_page = None
+        else:
+            try:
+                per_page = int(per_page_raw)
+            except (TypeError, ValueError):
+                per_page = None
+            if per_page is not None:
+                # Clamp to sane bounds. 0 / negative disables pagination.
+                if per_page <= 0:
+                    per_page = None
+                else:
+                    per_page = min(per_page, 200)
+
+    result = get_all_summaries(
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        page=page,
+        per_page=per_page,
+    )
+
+    # Normalize sort values to what the DB layer actually used, so the template
+    # renders arrows for the effective sort even if the user passed garbage.
+    allowed_sort_keys = {
+        "title",
+        "creator",
+        "video_date",
+        "summary_length",
+        "model_used",
+        "created_at",
+    }
+    effective_sort = sort_by if sort_by in allowed_sort_keys else "created_at"
+    effective_dir = (
+        sort_dir.lower()
+        if isinstance(sort_dir, str) and sort_dir.lower() in {"asc", "desc"}
+        else "desc"
+    )
+
+    return render_template(
+        "index.html",
+        summaries=result["items"],
+        pagination={
+            "total": result["total"],
+            "page": result["page"],
+            "per_page": result["per_page"],
+            "total_pages": result["total_pages"],
+        },
+        sort_by=effective_sort,
+        sort_dir=effective_dir,
+    )
 
 
 @app.route("/models", methods=["GET"])
@@ -92,7 +156,7 @@ def get_models():
 
 
 @app.route("/summarize", methods=["POST"])
-@limiter.limit("10 per hour")  # Rate limit: 10 summaries per hour per IP
+@limiter.limit("10 per hour", exempt_when=is_local)  # Rate limit: 10 summaries per hour per IP
 def summarize():
     """Main endpoint to summarize a YouTube video"""
     url = request.form.get("url")
@@ -102,18 +166,42 @@ def summarize():
     if not url:
         return jsonify({"error": "No URL provided"}), 400
 
+    # Canonicalize URL so different forms of the same video share a cache entry
+    canonical_url = canonicalize_youtube_url(url)
+
+    # Cache hit: skip external calls and LLM cost when we already have
+    # a summary for this exact url + model + length combination.
+    cached = get_cached_summary(canonical_url, model, length)
+    if cached is None and canonical_url != url:
+        # Fall back to legacy rows saved before URL canonicalization
+        cached = get_cached_summary(url, model, length)
+
+    if cached:
+        return jsonify(
+            {
+                "summary": cached["summary"],
+                "title": cached.get("title") or "",
+                "creator": cached.get("creator") or "",
+                "video_date": cached.get("video_date") or "",
+                "caption_length": len((cached.get("subtitles") or "").split()),
+                "model_used": cached.get("model_used") or model,
+                "summary_length": cached.get("summary_length") or length,
+                "cached": True,
+            }
+        )
+
     try:
         # Extract video info and captions
-        video_info = get_video_info(url)
+        video_info = get_video_info(canonical_url)
         if not video_info["captions"]:
             return jsonify({"error": "No captions found"}), 404
 
         # Summarize
         summary = summarize_text(video_info["captions"], model=model, length=length)
 
-        # Save to database
+        # Save to database using canonical URL so future lookups hit
         save_summary(
-            url=url,
+            url=canonical_url,
             title=video_info["title"],
             creator=video_info["creator"],
             video_date=video_info["video_date"],
@@ -132,6 +220,7 @@ def summarize():
                 "caption_length": len(video_info["captions"].split()),
                 "model_used": model,
                 "summary_length": length,
+                "cached": False,
             }
         )
 
@@ -173,6 +262,7 @@ def delete_summary_route(summary_id):
 
 
 @app.route("/health")
+@limiter.exempt
 def health():
-    """Health check endpoint for monitoring"""
+    """Health check endpoint for monitoring (always exempt from rate limits)"""
     return jsonify({"status": "healthy"}), 200

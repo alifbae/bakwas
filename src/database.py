@@ -91,18 +91,85 @@ def save_summary(
         )
 
 
-def get_all_summaries():
-    """Get all summaries ordered by creation date"""
+def get_all_summaries(
+    sort_by="created_at",
+    sort_dir="desc",
+    page=1,
+    per_page=None,
+):
+    """
+    Get summaries ordered by the given column and direction, with optional pagination.
+
+    Args:
+        sort_by: one of 'title', 'creator', 'video_date', 'summary_length',
+                 'model_used', 'created_at'. Invalid values fall back to 'created_at'.
+        sort_dir: 'asc' or 'desc'. Invalid values fall back to 'desc'.
+        page: 1-based page number.
+        per_page: number of rows per page. None (or <= 0) returns all rows.
+
+    Returns:
+        dict with keys:
+            items: list of summary dicts
+            total: total number of rows
+            page: current page (1-based)
+            per_page: page size (None if unpaginated)
+            total_pages: number of pages (1 if unpaginated)
+    """
+    allowed_columns = {
+        "title",
+        "creator",
+        "video_date",
+        "summary_length",
+        "model_used",
+        "created_at",
+    }
+    if sort_by not in allowed_columns:
+        sort_by = "created_at"
+
+    sort_dir = (sort_dir or "").lower()
+    if sort_dir not in {"asc", "desc"}:
+        sort_dir = "desc"
+
+    # Build ORDER BY safely: both values are whitelisted.
+    # Use a stable secondary sort on created_at desc to keep ordering deterministic
+    # when the primary column has duplicates.
+    order_clause = f"{sort_by} {sort_dir.upper()}"
+    if sort_by != "created_at":
+        order_clause += ", created_at DESC"
+
     with get_db() as conn:
-        cursor = conn.execute(
-            """
+        # Total count (for pagination UI)
+        total = conn.execute("SELECT COUNT(*) FROM summaries").fetchone()[0]
+
+        base_query = f"""
             SELECT id, url, title, creator, video_date, model_used, summary_length, created_at,
                    substr(summary, 1, 150) as summary_preview
             FROM summaries
-            ORDER BY created_at DESC
+            ORDER BY {order_clause}
         """
-        )
-        return [dict(row) for row in cursor.fetchall()]
+
+        if per_page and per_page > 0:
+            page = max(1, int(page or 1))
+            offset = (page - 1) * per_page
+            cursor = conn.execute(
+                base_query + " LIMIT ? OFFSET ?",
+                (per_page, offset),
+            )
+            total_pages = max(1, (total + per_page - 1) // per_page) if total else 1
+        else:
+            cursor = conn.execute(base_query)
+            page = 1
+            total_pages = 1
+
+        items = [dict(row) for row in cursor.fetchall()]
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": total_pages,
+    }
 
 
 def get_summary_by_id(summary_id):
@@ -113,6 +180,24 @@ def get_summary_by_id(summary_id):
             SELECT * FROM summaries WHERE id = ?
         """,
             (summary_id,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def get_cached_summary(url, model_used, summary_length):
+    """
+    Return a cached summary row matching url + model + length, or None.
+    Used to avoid regenerating summaries for the exact same request.
+    """
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT * FROM summaries
+            WHERE url = ? AND model_used = ? AND summary_length = ?
+            LIMIT 1
+            """,
+            (url, model_used, summary_length),
         )
         row = cursor.fetchone()
         return dict(row) if row else None

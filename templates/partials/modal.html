@@ -1,0 +1,65 @@
+{#
+  Reusable modal component using a Pico.css <dialog>.
+
+  Usage:
+    {% from "partials/modal.html" import modal %}
+
+    {% call modal(id="my-dialog", title="My Title") %}
+      <p>Body content goes here.</p>
+    {% endcall %}
+
+    To show/hide from JS:
+      openModal('my-dialog')
+      closeModal('my-dialog')
+
+  Parameters:
+    id        (required) Unique DOM id for the <dialog>.
+    title     (optional) Header label. Omit to hide the header.
+    size      (optional) "sm" | "md" | "lg". Defaults to Pico's default width.
+    close_on_backdrop (optional, default true) Close when the user clicks outside the article.
+    footer    (optional) Raw HTML for a footer area (e.g. action buttons).
+              If omitted, no footer is rendered.
+    form_id   (optional) If provided, wraps the body (and footer) in a <form>
+              element with this id. Useful for dialogs that submit data.
+    form_onsubmit (optional) JS expression for the form's onsubmit handler.
+#}
+
+{% macro modal(id, title=None, size=None, close_on_backdrop=True, footer=None, form_id=None, form_onsubmit=None) %}
+<dialog
+  id="{{ id }}"
+  class="app-modal{% if size %} app-modal--{{ size }}{% endif %}"
+  {% if close_on_backdrop %}data-close-on-backdrop="true"{% endif %}
+>
+  <article>
+    {% if title %}
+    <header>
+      <strong>{{ title }}</strong>
+      <button
+        aria-label="Close"
+        class="app-modal__close"
+        onclick="closeModal('{{ id }}')"
+        type="button"
+      >&times;</button>
+    </header>
+    {% endif %}
+
+    {% if form_id %}
+    <form id="{{ form_id }}"{% if form_onsubmit %} onsubmit="{{ form_onsubmit }}"{% endif %}>
+      {{ caller() }}
+      {% if footer %}
+      <footer>
+        {{ footer | safe }}
+      </footer>
+      {% endif %}
+    </form>
+    {% else %}
+    {{ caller() }}
+    {% if footer %}
+    <footer>
+      {{ footer | safe }}
+    </footer>
+    {% endif %}
+    {% endif %}
+  </article>
+</dialog>
+{% endmacro %}

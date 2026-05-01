@@ -5,7 +5,7 @@ Handles YouTube video info extraction and VTT caption cleaning.
 
 import re
 from datetime import datetime
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import requests
 import yt_dlp
@@ -24,6 +24,56 @@ def validate_youtube_url(url):
         return parsed.netloc in allowed_domains
     except:
         return False
+
+
+def extract_video_id(url):
+    """
+    Extract the canonical YouTube video ID from any supported URL form.
+    Supports:
+      - https://www.youtube.com/watch?v=<id>
+      - https://youtu.be/<id>
+      - https://m.youtube.com/watch?v=<id>
+      - https://www.youtube.com/shorts/<id>
+      - https://www.youtube.com/embed/<id>
+    Returns None if no ID can be extracted.
+    """
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return None
+
+    host = (parsed.netloc or "").lower()
+    path = parsed.path or ""
+
+    if host == "youtu.be":
+        # youtu.be/<id>
+        candidate = path.lstrip("/").split("/", 1)[0]
+        return candidate or None
+
+    if host in {"youtube.com", "www.youtube.com", "m.youtube.com"}:
+        # watch?v=<id>
+        if path == "/watch":
+            qs = parse_qs(parsed.query or "")
+            vals = qs.get("v")
+            if vals:
+                return vals[0] or None
+        # /shorts/<id> or /embed/<id> or /live/<id>
+        parts = [p for p in path.split("/") if p]
+        if len(parts) >= 2 and parts[0] in {"shorts", "embed", "live"}:
+            return parts[1] or None
+
+    return None
+
+
+def canonicalize_youtube_url(url):
+    """
+    Return a canonical YouTube URL suitable for caching/lookup.
+    Falls back to the original URL if no video ID can be extracted.
+    """
+    video_id = extract_video_id(url)
+    if not video_id:
+        return url
+    return f"https://www.youtube.com/watch?v={video_id}"
 
 
 def get_video_info(url):

@@ -227,8 +227,8 @@ button.icon-only {
   margin-top: 1rem;
 }
 
-/* Detail page header with regenerate button */
-article header {
+/* Detail page header with regenerate button (h2 + button) */
+article header:has(h2) {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -242,9 +242,27 @@ article header h2 {
   padding: 0;
 }
 
-article header button {
+article header:has(h2) button {
   margin: 0;
   white-space: nowrap;
+}
+
+/* Result summary metadata - vertical, left-aligned list of properties */
+.summary-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  text-align: left;
+}
+
+.summary-meta > div {
+  width: 100%;
+  line-height: 1.5;
+}
+
+.summary-meta strong {
+  margin-right: 0.35rem;
 }
 
 /* Markdown content enhancements */
@@ -313,17 +331,269 @@ footer a:hover {
 }
 
 /* Table responsive improvements */
-@media (max-width: 768px) {
+.summaries-table {
+  table-layout: auto;
+}
+
+.summaries-table .video-cell {
+  word-break: break-word;
+}
+
+/* Creator shown inline under the title only on small screens */
+.summaries-table .video-meta-sm {
+  display: none;
+  margin-top: 0.15rem;
+  color: var(--pico-muted-color);
+}
+
+.summaries-table .video-meta-sm small {
+  display: block;
+  line-height: 1.3;
+}
+
+/* Tablet breakpoint: hide lowest-priority columns */
+@media (max-width: 900px) {
+  .summaries-table .col-hide-md {
+    display: none;
+  }
+}
+
+/* Phone breakpoint: collapse to just Video + Actions, with creator under title */
+@media (max-width: 640px) {
   #summaryForm .grid {
     grid-template-columns: 1fr;
   }
 
-  table {
-    font-size: 0.875rem;
+  .summaries-table .col-hide-sm {
+    display: none;
   }
 
-  th,
-  td {
+  .summaries-table .video-meta-sm {
+    display: block;
+  }
+
+  .summaries-table {
+    font-size: 0.9rem;
+  }
+
+  .summaries-table th,
+  .summaries-table td {
     padding: 0.5rem;
   }
+
+  /* Keep the Actions column tight on phones */
+  .summaries-table th:last-child,
+  .summaries-table td:last-child {
+    width: 1%;
+    white-space: nowrap;
+  }
+}
+
+/* Loading state - vertically centered while summary is being pulled and processed */
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 8rem;
+  width: 100%;
+  text-align: center;
+}
+
+.loading-state p {
+  margin: 0;
+}
+
+/* Reusable modal header - title left, close button right */
+.app-modal header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.app-modal__close {
+  background: transparent !important;
+  border: none !important;
+  color: var(--pico-muted-color);
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+  margin: 0;
+  cursor: pointer;
+  width: auto;
+}
+
+.app-modal__close:hover,
+.app-modal__close:focus {
+  color: var(--pico-color);
+}
+
+/* Reusable modal footer - keep action buttons inline on the right, equal width */
+.app-modal footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.app-modal footer button {
+  margin: 0;
+  flex: 0 0 auto;
+  min-width: 6.5rem;
+}
+
+/* Modal size modifiers */
+.app-modal.app-modal--sm article {
+  max-width: 24rem;
+}
+
+.app-modal.app-modal--lg article {
+  max-width: 48rem;
+}
+
+/* Tighten spacing between nav action buttons on the right */
+nav ul:last-of-type {
+  gap: 0.25rem;
+}
+
+nav ul:last-of-type li {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Compact icon-only nav buttons */
+.nav-icon-btn {
+  padding: 0.4rem 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.nav-icon-btn .settings-icon {
+  display: block;
+}
+
+/* Sortable table headers */
+.sortable-th .sort-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sortable-th .sort-link:hover {
+  color: var(--pico-primary);
+}
+
+.sortable-th .sort-link.active {
+  color: var(--pico-primary);
+  font-weight: 600;
+}
+
+.sortable-th .sort-arrow {
+  font-size: 0.85em;
+  opacity: 0.8;
+}
+
+/* Pagination controls */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  margin: 1rem 0 1.5rem;
+  flex-wrap: wrap;
+}
+
+.pagination .page-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border-radius: var(--pico-border-radius);
+  text-decoration: none;
+  color: var(--pico-color);
+  background: var(--pico-secondary-background);
+  line-height: 1;
+}
+
+.pagination .page-link:hover {
+  background: var(--pico-muted-border-color);
+  color: var(--pico-primary);
+}
+
+.pagination .page-link.disabled {
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+.pagination .page-status {
+  padding: 0 0.5rem;
+  color: var(--pico-muted-color);
+}
+
+.summaries-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+/* Icon inside buttons should not add baseline spacing */
+.delete-btn .icon {
+  display: block;
+}
+
+.delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+/* Make the summaries table rows compact and vertically centered */
+.summaries-table td,
+.summaries-table th {
+  vertical-align: middle;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.summaries-table .video-cell {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+/* Actions cell: zero-width, tight, icon dead-center */
+.summaries-table th:last-child,
+.summaries-table td:last-child {
+  width: 1%;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.summaries-table td:last-child form {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+}
+
+/* Danger button used in the confirm-delete modal */
+.app-modal .danger {
+  background: var(--pico-del-color, #dc322f);
+  border-color: var(--pico-del-color, #dc322f);
+  color: #fff;
+}
+
+.app-modal .danger:hover,
+.app-modal .danger:focus {
+  filter: brightness(0.92);
+  color: #fff;
 }
