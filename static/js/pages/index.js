@@ -24,6 +24,7 @@ import { toast } from "../modules/toast.js";
 import { getDefaultModel, getDefaultLength } from "../modules/preferences.js";
 import { extractYouTubeId, fetchYouTubeOEmbed } from "../modules/youtube.js";
 import { fetchModels, streamSummarize } from "../modules/api.js";
+import { renderMarkdown } from "../modules/markdown.js";
 
 // ---------------------------------------------------------------------------
 // Template-rendering helpers
@@ -165,16 +166,6 @@ function renderFooter(meta, data) {
   const frag = cloneTemplate("tpl-summary-footer");
   fillFields(frag, { summary: summaryLine + formatCostSuffix(data) });
   return frag.firstElementChild;
-}
-
-/**
- * Render text as markdown via `window.marked` if available, else fall back
- * to plain (escaped) text.
- * @param {string} text
- * @returns {string}
- */
-function renderMarkdown(text) {
-  return window.marked ? window.marked.parse(text) : escapeHtml(text);
 }
 
 // ---------------------------------------------------------------------------

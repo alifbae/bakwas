@@ -207,12 +207,20 @@ Run with `pytest` or `npm test`. See [Development](../development/index.md).
 | Python runtime | `requirements.txt` | Dependabot weekly; **yt-dlp daily**. |
 | Python dev | `requirements-dev.txt` | Dependabot weekly. |
 | JS test tooling | `package.json` | Dependabot weekly. |
-| CDN scripts | `templates/base.html` (marked) | Manually, pinned to a major. |
+| CDN scripts | `static/js/modules/markdown.js` (marked ESM import) | Manually, pinned to a major. |
 | GitHub Actions | `.github/workflows/` | Dependabot weekly. |
 
 yt-dlp is on a daily Dependabot schedule because YouTube changes often and
 stale builds break caption extraction; we want fast PRs so we can verify
 and merge.
+
+!!! note "marked is imported as an ES module"
+    `marked` is imported directly inside `static/js/modules/markdown.js`
+    from `https://cdn.jsdelivr.net/npm/marked@18/+esm`. Consumers call
+    `renderMarkdown(text)` from that module — they never touch the library
+    directly. To upgrade, change the version in that one import line.
+    Don't load marked as a global `<script>`; the rest of the codebase no
+    longer looks at `window.marked`.
 
 ## Security
 

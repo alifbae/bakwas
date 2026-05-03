@@ -12,26 +12,17 @@
 import { openModal, closeModal } from "../modules/modal.js";
 import { readJsonScript, escapeHtml } from "../modules/dom.js";
 import { fetchModels, regenerateSummary } from "../modules/api.js";
+import { renderMarkdown } from "../modules/markdown.js";
 
 /**
- * Render markdown into the `#summary-content` element. Falls back to
- * escaped plain text if `marked` isn't available.
+ * Render markdown into the `#summary-content` element.
  *
  * @param {string | null | undefined} summaryText
  */
 function renderSummary(summaryText) {
   const el = document.getElementById("summary-content");
   if (!el) return;
-  try {
-    const html = window.marked
-      ? window.marked.parse(summaryText)
-      : escapeHtml(String(summaryText));
-    el.innerHTML = html;
-  } catch (e) {
-    console.error("Error parsing summary:", e);
-    el.innerHTML =
-      "<p><mark>Error rendering summary: " + escapeHtml(e.message) + "</mark></p>";
-  }
+  el.innerHTML = renderMarkdown(summaryText);
 }
 
 /**
