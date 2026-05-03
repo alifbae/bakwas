@@ -109,7 +109,7 @@ app.secret_key = os.getenv("SECRET_KEY", secrets.token_hex(32))
 # Security: Add security headers
 csp = {
     "default-src": ["'self'"],
-    "script-src": ["'self'", "'unsafe-inline'", "code.jquery.com", "cdn.jsdelivr.net"],
+    "script-src": ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net"],
     "style-src": [
         "'self'",
         "'unsafe-inline'",

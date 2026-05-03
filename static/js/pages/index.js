@@ -5,11 +5,15 @@
 //   - uses skeleton placeholders while waiting for first tokens
 //   - surfaces toast notifications for success/error
 
+import { escapeHtml } from "../modules/dom.js";
+import { toast } from "../modules/toast.js";
+import { getDefaultModel, getDefaultLength } from "../modules/preferences.js";
+
 function formatCostSuffix(data) {
   if (data.cost_usd === null || data.cost_usd === undefined) return "";
   const cost = Number(data.cost_usd);
   if (!Number.isFinite(cost)) return "";
-  return ` • cost $${cost.toFixed(4)}`;
+  return ` • cost ${cost.toFixed(4)}`;
 }
 
 // Extract a YouTube video ID from a pasted URL.
@@ -48,13 +52,13 @@ function extractYouTubeId(raw) {
   return null;
 }
 
-function renderUrlPreview($target, videoId) {
+function renderUrlPreview(target, videoId) {
   if (!videoId) {
-    $target.empty();
+    target.replaceChildren();
     return;
   }
   const thumb = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
-  $target.html(`
+  target.innerHTML = `
     <div class="url-preview">
       <img
         src="${thumb}"
@@ -64,36 +68,38 @@ function renderUrlPreview($target, videoId) {
       />
       <div class="url-preview__text">
         <div class="url-preview__title" data-role="title">Loading…</div>
-        <div class="url-preview__meta" data-role="meta">Video ID: ${videoId}</div>
+        <div class="url-preview__meta" data-role="meta">Video ID: ${escapeHtml(videoId)}</div>
       </div>
     </div>
-  `);
+  `;
 
   // Fetch the real title + author from YouTube's oEmbed (via the public
   // noembed proxy so we stay CORS-friendly with no API key).
-  fetch(`https://noembed.com/embed?url=https://youtu.be/${encodeURIComponent(videoId)}`)
+  fetch(
+    `https://noembed.com/embed?url=https://youtu.be/${encodeURIComponent(videoId)}`
+  )
     .then((r) => (r.ok ? r.json() : null))
     .then((data) => {
       if (!data || data.error) return;
-      const $title = $target.find('[data-role="title"]');
-      const $meta = $target.find('[data-role="meta"]');
-      if (data.title) $title.text(data.title);
-      if (data.author_name) $meta.text(data.author_name);
+      const title = target.querySelector('[data-role="title"]');
+      const meta = target.querySelector('[data-role="meta"]');
+      if (title && data.title) title.textContent = data.title;
+      if (meta && data.author_name) meta.textContent = data.author_name;
     })
     .catch(() => {
       /* silently fail; thumbnail is still useful */
     });
 }
 
-function renderUrlPreviewError($target, message) {
-  $target.html(`
+function renderUrlPreviewError(target, message) {
+  target.innerHTML = `
     <div class="url-preview url-preview--error">
       <div class="url-preview__text">
         <div class="url-preview__title">Not a YouTube URL</div>
-        <div class="url-preview__meta">${message}</div>
+        <div class="url-preview__meta">${escapeHtml(message)}</div>
       </div>
     </div>
-  `);
+  `;
 }
 
 // Skeleton placeholder while waiting for the first streamed chunk.
@@ -112,102 +118,105 @@ function renderSkeleton() {
   `;
 }
 
-function updateSkeletonStatus($resultDiv, message) {
-  const $status = $resultDiv.find(".skeleton-summary__status");
-  if ($status.length) $status.text(message);
+function updateSkeletonStatus(resultEl, message) {
+  const status = resultEl.querySelector(".skeleton-summary__status");
+  if (status) status.textContent = message;
 }
 
-$(document).ready(function () {
+async function loadModels() {
+  const modelSelect = document.getElementById("model");
+  if (!modelSelect) return;
+
+  try {
+    const response = await fetch("/models");
+    if (!response.ok) throw new Error("models request failed");
+    const data = await response.json();
+
+    modelSelect.innerHTML = "";
+    const savedModel = getDefaultModel();
+
+    (data.models || []).forEach((model) => {
+      const option = document.createElement("option");
+      option.value = model.id;
+      option.textContent = model.name;
+      if (savedModel ? model.id === savedModel : model.default) {
+        option.selected = true;
+      }
+      modelSelect.appendChild(option);
+    });
+  } catch (_) {
+    modelSelect.innerHTML = '<option value="">Error loading models</option>';
+  }
+}
+
+function applySavedLength() {
+  const lengthSelect = document.getElementById("length");
+  if (!lengthSelect) return;
+  const savedLength = getDefaultLength();
+  if (
+    savedLength &&
+    lengthSelect.querySelector(`option[value="${CSS.escape(savedLength)}"]`)
+  ) {
+    lengthSelect.value = savedLength;
+  }
+}
+
+function initHomepage() {
+  const urlInput = document.getElementById("url");
+  const form = document.getElementById("summaryForm");
+  const resultDiv = document.getElementById("result");
+  if (!urlInput || !form || !resultDiv) return;
+
   // Auto-focus the URL input on initial load so the user can paste immediately.
   setTimeout(() => {
-    const $url = $("#url");
-    if ($url.length && !$url.is(":focus")) {
-      $url.trigger("focus");
+    if (document.activeElement !== urlInput) {
+      urlInput.focus();
     }
   }, 50);
 
-  // Load available models
-  function loadModels() {
-    $.ajax({
-      url: "/models",
-      method: "GET",
-      success: function (data) {
-        const $modelSelect = $("#model");
-        $modelSelect.empty();
-
-        const savedModel =
-          typeof getDefaultModel === "function" ? getDefaultModel() : null;
-
-        $.each(data.models, function (index, model) {
-          const $option = $("<option>").val(model.id).text(model.name);
-          if (savedModel ? model.id === savedModel : model.default) {
-            $option.prop("selected", true);
-          }
-          $modelSelect.append($option);
-        });
-      },
-      error: function () {
-        $("#model").html('<option value="">Error loading models</option>');
-      },
-    });
-  }
-
   loadModels();
-
-  // Apply saved default length preference if present
-  const savedLength =
-    typeof getDefaultLength === "function" ? getDefaultLength() : null;
-  if (savedLength && $("#length option[value='" + savedLength + "']").length) {
-    $("#length").val(savedLength);
-  }
+  applySavedLength();
 
   // URL preview appears below the form (not inside the grid row)
-  const $url = $("#url");
-  let $preview = $("#url-preview");
-  if (!$preview.length) {
-    $preview = $('<div id="url-preview"></div>');
-    const $form = $("#summaryForm");
-    if ($form.length) {
-      $form.after($preview);
-    } else {
-      $url.after($preview);
-    }
+  let preview = document.getElementById("url-preview");
+  if (!preview) {
+    preview = document.createElement("div");
+    preview.id = "url-preview";
+    form.after(preview);
   }
 
   function handleUrlChange() {
-    const raw = ($url.val() || "").trim();
+    const raw = (urlInput.value || "").trim();
     if (!raw) {
-      $preview.empty();
+      preview.replaceChildren();
       return;
     }
     const id = extractYouTubeId(raw);
     if (id) {
-      renderUrlPreview($preview, id);
+      renderUrlPreview(preview, id);
     } else {
-      renderUrlPreviewError($preview, "Paste a youtube.com or youtu.be link.");
+      renderUrlPreviewError(preview, "Paste a youtube.com or youtu.be link.");
     }
   }
 
-  $url.on("input paste", function () {
-    // paste fires before the value is applied; defer one tick
-    setTimeout(handleUrlChange, 0);
-  });
+  urlInput.addEventListener("input", () => setTimeout(handleUrlChange, 0));
+  urlInput.addEventListener("paste", () => setTimeout(handleUrlChange, 0));
 
   // Form submission — streaming path
-  $("#summaryForm").on("submit", function (e) {
+  form.addEventListener("submit", (e) => {
     e.preventDefault();
 
-    const url = ($url.val() || "").trim();
-    const model = $("#model").val();
-    const length = $("#length").val();
-    const $resultDiv = $("#result");
+    const url = (urlInput.value || "").trim();
+    const model = document.getElementById("model").value;
+    const length = document.getElementById("length").value;
 
     if (!url) {
-      if (window.toast) toast("Paste a YouTube URL first", { type: "error" });
+      toast("Paste a YouTube URL first", { type: "error" });
       return;
     }
 
-    $resultDiv.show().html(renderSkeleton());
+    resultDiv.style.display = "";
+    resultDiv.innerHTML = renderSkeleton();
 
     // POST to the streaming endpoint. The server replies with text/event-stream.
     const body = new URLSearchParams({ url, model, length });
@@ -230,28 +239,25 @@ $(document).ready(function () {
         }
         return response.body.getReader();
       })
-      .then((reader) => consumeStream(reader, $resultDiv))
+      .then((reader) => consumeStream(reader, resultDiv))
       .catch((err) => {
-        $resultDiv.html(
-          `<p><mark>Error: ${err.message || "Unknown error"}</mark></p>`
-        );
-        if (window.toast) toast(err.message || "Summary failed", { type: "error" });
+        resultDiv.innerHTML = `<p><mark>Error: ${escapeHtml(err.message || "Unknown error")}</mark></p>`;
+        toast(err.message || "Summary failed", { type: "error" });
       });
   });
-});
+}
 
 // ----------------------------------------------------------------------------
 // SSE consumer: reads the stream, dispatches events to the UI.
 // ----------------------------------------------------------------------------
 
-function consumeStream(reader, $resultDiv) {
+function consumeStream(reader, resultDiv) {
   const decoder = new TextDecoder();
   let buffer = "";
   let meta = null;
   let fullText = "";
   let firstChunkReceived = false;
-  let $liveContent = null;
-  let $meta = null;
+  let liveContent = null;
 
   function flushEvents() {
     // SSE events are separated by a blank line.
@@ -274,29 +280,38 @@ function consumeStream(reader, $resultDiv) {
       if (!firstChunkReceived) {
         firstChunkReceived = true;
         // Replace skeleton with a live header + content block.
-        const modelName = (meta.model_used || "").split("/")[1] || meta.model_used;
-        $resultDiv.empty();
-        $meta = $('<header class="summary-meta">').html(`
+        const modelName =
+          (meta.model_used || "").split("/")[1] || meta.model_used;
+        resultDiv.replaceChildren();
+
+        const header = document.createElement("header");
+        header.className = "summary-meta";
+        header.innerHTML = `
           <div><strong>Video:</strong> ${escapeHtml(meta.title || "")}</div>
           <div><strong>Creator:</strong> ${escapeHtml(meta.creator || "")}</div>
           <div><strong>Date:</strong> ${escapeHtml(meta.video_date || "")}</div>
           <div><strong>Length:</strong> ${escapeHtml(meta.summary_length || "")}</div>
           <div><strong>Model:</strong> <small>${escapeHtml(modelName || "")}</small></div>
-        `);
-        $liveContent = $('<div class="markdown-content"></div>');
-        $resultDiv.append($meta).append($liveContent);
+        `;
+        liveContent = document.createElement("div");
+        liveContent.className = "markdown-content";
+
+        resultDiv.append(header, liveContent);
       }
       fullText += ev.data.content || "";
       // Re-render the full markdown each tick. For summaries of the size
       // we generate (a few KB), this is cheap and keeps formatting consistent.
-      $liveContent.html(window.marked ? marked.parse(fullText) : escapeHtml(fullText));
+      liveContent.innerHTML = window.marked
+        ? window.marked.parse(fullText)
+        : escapeHtml(fullText);
       return;
     }
 
     if (ev.event === "done") {
       const data = ev.data || {};
       // Build the final footer with cost + persistence status.
-      const captionWords = meta && meta.caption_length ? Number(meta.caption_length) : null;
+      const captionWords =
+        meta && meta.caption_length ? Number(meta.caption_length) : null;
       const footerLine = [
         captionWords ? `${captionWords.toLocaleString()} words extracted` : null,
         data.cached ? "Loaded from cache" : "Saved to database",
@@ -304,30 +319,28 @@ function consumeStream(reader, $resultDiv) {
         .filter(Boolean)
         .join(" • ");
 
-      const $footer = $("<footer>").html(`
-        <small>${footerLine}${formatCostSuffix(data)}</small><br>
+      const footer = document.createElement("footer");
+      footer.innerHTML = `
+        <small>${escapeHtml(footerLine)}${formatCostSuffix(data)}</small><br>
         <small><em>Refresh page to see in table below</em></small>
-      `);
+      `;
 
       if (!firstChunkReceived) {
         // Empty stream (shouldn't happen) — fall back to plain render.
-        $resultDiv.empty();
+        resultDiv.replaceChildren();
       }
-      $resultDiv.append($footer);
+      resultDiv.appendChild(footer);
 
-      if (window.toast) {
-        toast(data.cached ? "Loaded from cache" : "Summary saved", {
-          type: "success",
-        });
-      }
+      toast(data.cached ? "Loaded from cache" : "Summary saved", {
+        type: "success",
+      });
       return;
     }
 
     if (ev.event === "error") {
       const msg = (ev.data && ev.data.error) || "Summary failed";
-      $resultDiv.html(`<p><mark>Error: ${escapeHtml(msg)}</mark></p>`);
-      if (window.toast) toast(msg, { type: "error" });
-      return;
+      resultDiv.innerHTML = `<p><mark>Error: ${escapeHtml(msg)}</mark></p>`;
+      toast(msg, { type: "error" });
     }
   }
 
@@ -343,7 +356,7 @@ function consumeStream(reader, $resultDiv) {
 
       // Update skeleton status after first non-chunk event (meta)
       if (!firstChunkReceived && meta) {
-        updateSkeletonStatus($resultDiv, "Generating summary…");
+        updateSkeletonStatus(resultDiv, "Generating summary…");
       }
 
       return pump();
@@ -372,8 +385,9 @@ function parseSseEvent(block) {
   }
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
-  );
+// Auto-run when this module is imported on the homepage.
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initHomepage);
+} else {
+  initHomepage();
 }

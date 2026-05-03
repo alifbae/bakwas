@@ -98,15 +98,21 @@
 
     {% include "partials/footer.html" %}
 
-    <script defer src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    {#
+      JS is loaded as ES modules. `main.js` is the single base-page entry
+      point; per-page modules are added via the `extra_scripts` block.
+
+      Note on cache-busting: `asset_version` is derived from the newest mtime
+      across static/js + static/css, so editing any module bumps the version
+      on this <script> tag. Browsers will re-fetch main.js and, transitively,
+      its imports. If a module import ever caches stale, a hard refresh fixes
+      it — a proper build step is the long-term answer.
+    #}
     <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script defer src="{{ url_for('static', filename='js/toast.js') }}?v={{ asset_version }}"></script>
-    <script defer src="{{ url_for('static', filename='js/theme.js') }}?v={{ asset_version }}"></script>
-    <script defer src="{{ url_for('static', filename='js/datetime.js') }}?v={{ asset_version }}"></script>
-    <script defer src="{{ url_for('static', filename='js/modal.js') }}?v={{ asset_version }}"></script>
-    <script defer src="{{ url_for('static', filename='js/preferences.js') }}?v={{ asset_version }}"></script>
-    <script defer src="{{ url_for('static', filename='js/delete-confirm.js') }}?v={{ asset_version }}"></script>
-    <script defer src="{{ url_for('static', filename='js/command-palette.js') }}?v={{ asset_version }}"></script>
+    <script
+      type="module"
+      src="{{ url_for('static', filename='js/main.js') }}?v={{ asset_version }}"
+    ></script>
     {% block extra_scripts %}{% endblock %}
   </body>
 </html>
