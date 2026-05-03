@@ -1,12 +1,14 @@
 # Dependabot configuration
 # https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
 #
-# yt-dlp ships frequent releases and breaks when stale (YouTube changes things
-# often), so it gets its own daily schedule ahead of the general weekly run.
+# Dependabot requires one entry per (ecosystem, directory) tuple. We use a
+# single `pip` entry with daily scheduling: yt-dlp is the only dep that
+# actually needs daily updates (YouTube breaks stale builds), and grouping
+# the rest keeps review volume low.
 
 version: 2
 updates:
-  # --- Python: yt-dlp (daily, high-priority) -------------------------------
+  # --- Python (runtime + dev) ----------------------------------------------
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
@@ -14,30 +16,22 @@ updates:
     labels:
       - "dependencies"
       - "python"
-      - "yt-dlp"
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
     open-pull-requests-limit: 5
-    allow:
-      - dependency-name: "yt-dlp"
-
-  # --- Python: everything else (weekly) ------------------------------------
-  - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    labels:
-      - "dependencies"
-      - "python"
-    commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-    open-pull-requests-limit: 5
-    ignore:
-      # Handled by the daily job above.
-      - dependency-name: "yt-dlp"
+    groups:
+      # yt-dlp is kept separate so its PR isn't blocked behind other updates
+      # and is easy to spot / fast-merge.
+      yt-dlp:
+        patterns:
+          - "yt-dlp"
+      # Everything else rolls up into one PR per day to minimise review noise.
+      python-dependencies:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "yt-dlp"
 
   # --- npm (test tooling: vitest, jsdom) -----------------------------------
   - package-ecosystem: "npm"
@@ -52,6 +46,10 @@ updates:
       prefix: "chore(deps)"
       include: "scope"
     open-pull-requests-limit: 3
+    groups:
+      js-dependencies:
+        patterns:
+          - "*"
 
   # --- GitHub Actions ------------------------------------------------------
   - package-ecosystem: "github-actions"
@@ -65,3 +63,7 @@ updates:
     commit-message:
       prefix: "chore(ci)"
       include: "scope"
+    groups:
+      gha-dependencies:
+        patterns:
+          - "*"
