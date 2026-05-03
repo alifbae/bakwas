@@ -6,9 +6,29 @@ on:
       - main
     tags:
       - "v*"
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "tests/**"
+      - ".github/dependabot.yml"
+      - ".kiro/**"
+      - ".vscode/**"
+      - ".prettierrc"
+      - ".prettierignore"
+      - "LICENSE"
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "tests/**"
+      - ".github/dependabot.yml"
+      - ".kiro/**"
+      - ".vscode/**"
+      - ".prettierrc"
+      - ".prettierignore"
+      - "LICENSE"
   workflow_dispatch:
 
 env:
