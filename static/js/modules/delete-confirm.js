@@ -1,16 +1,22 @@
-// Confirm-delete modal wiring.
-// Usage in templates:
-//   <form method="POST" action="{{ delete_url }}">
-//     <button type="submit" class="delete-btn" data-confirm-delete
-//             data-confirm-message="Optional custom message"> … </button>
-//   </form>
-//
-// When the button is clicked, submission is intercepted and a shared
-// confirmation modal (#confirm-delete-dialog) is shown. The form only
-// submits if the user confirms.
+/**
+ * @module delete-confirm
+ *
+ * Confirm-delete modal wiring.
+ *
+ * Any form whose submit button has `data-confirm-delete` is intercepted
+ * on click; the shared `#confirm-delete-dialog` is shown, and the form
+ * only submits if the user confirms.
+ *
+ * Usage in templates:
+ *     <form method="POST" action="{{ delete_url }}">
+ *       <button type="submit" data-confirm-delete
+ *               data-confirm-message="Optional custom message"> … </button>
+ *     </form>
+ */
 
 import { openModal, closeModal } from "./modal.js";
 
+/** Install delegated click listeners. Call once from `main.js`. */
 export function initDeleteConfirm() {
   const modal = document.getElementById("confirm-delete-dialog");
   const confirmBtn = document.getElementById("confirm-delete-btn");
@@ -18,6 +24,7 @@ export function initDeleteConfirm() {
   if (!modal || !confirmBtn || !messageEl) return;
 
   const defaultMessage = messageEl.textContent;
+  /** @type {HTMLFormElement | null} */
   let pendingForm = null;
 
   // Delegated click for any [data-confirm-delete] button in any form.
@@ -46,7 +53,7 @@ export function initDeleteConfirm() {
     pendingForm = null;
     closeModal("confirm-delete-dialog");
     if (form) {
-      // Persist a flag so the next page load can show a success toast.
+      // Persist a flag so the next page load can surface a success toast.
       try {
         sessionStorage.setItem("bakwas.flash", "summary-deleted");
       } catch (_) {

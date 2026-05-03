@@ -1,8 +1,14 @@
-// Shared modal helpers for <dialog> elements rendered by templates/modal.html.
-//
-// Exports openModal/closeModal. main.js also exposes these on window for the
-// inline onclick="closeModal('id')" handlers still present in templates.
+/**
+ * @module modal
+ *
+ * Helpers for `<dialog>` elements rendered by `templates/partials/modal.html`.
+ * Uses the native HTML dialog API with attribute fallback for older engines.
+ */
 
+/**
+ * Open a dialog by id.
+ * @param {string} id
+ */
 export function openModal(id) {
   const dialog = document.getElementById(id);
   if (!dialog) return;
@@ -13,6 +19,10 @@ export function openModal(id) {
   }
 }
 
+/**
+ * Close a dialog by id.
+ * @param {string} id
+ */
 export function closeModal(id) {
   const dialog = document.getElementById(id);
   if (!dialog) return;
@@ -23,7 +33,10 @@ export function closeModal(id) {
   }
 }
 
-// Wire up backdrop-click-to-close for any modal that opts in.
+/**
+ * Wire up backdrop-click-to-close for any modal that opts in via
+ * `data-close-on-backdrop="true"`. Call once on page init.
+ */
 export function initModal() {
   document
     .querySelectorAll("dialog.app-modal[data-close-on-backdrop='true']")

@@ -1,9 +1,25 @@
-// User preferences stored in localStorage.
-// Keys: bakwas.defaultModel, bakwas.defaultLength, bakwas.itemsPerPage
+/**
+ * @module preferences
+ *
+ * User preferences stored in `localStorage`.
+ *
+ * Keys:
+ *   - `bakwas.defaultModel`     — preferred LLM model id
+ *   - `bakwas.defaultLength`    — preferred summary length
+ *   - `bakwas.itemsPerPage`     — pagination size on the homepage
+ *
+ * Exports:
+ *   - accessor helpers (`getDefaultModel`, etc.) used by other modules.
+ *   - `openSettings` / `saveSettings` for the settings dialog.
+ *   - `initHomepagePerPageRedirect` which syncs the URL `per_page` query
+ *     param to the saved preference on first homepage load.
+ */
 
 import { openModal, closeModal } from "./modal.js";
 import { toast } from "./toast.js";
+import { fetchModels, fetchStats } from "./api.js";
 
+/** localStorage keys for each preference. */
 const PREFS_KEYS = {
   defaultModel: "bakwas.defaultModel",
   defaultLength: "bakwas.defaultLength",
@@ -12,10 +28,17 @@ const PREFS_KEYS = {
 
 const DEFAULT_ITEMS_PER_PAGE = 10;
 
+/** @param {string} key */
 function getPreference(key) {
   return localStorage.getItem(key);
 }
 
+/**
+ * Persist a preference. Removing (by passing empty-ish value) keeps the
+ * store clean so fallbacks kick in.
+ * @param {string} key
+ * @param {string | null | undefined} value
+ */
 function setPreference(key, value) {
   if (value === null || value === undefined || value === "") {
     localStorage.removeItem(key);
@@ -24,15 +47,22 @@ function setPreference(key, value) {
   }
 }
 
+/** @returns {string | null} */
 export function getDefaultModel() {
   return getPreference(PREFS_KEYS.defaultModel);
 }
 
+/** @returns {string | null} */
 export function getDefaultLength() {
   return getPreference(PREFS_KEYS.defaultLength);
 }
 
-// Returns a positive integer or the string "all".
+/**
+ * Get the items-per-page preference. Returns a positive integer, or the
+ * literal string `"all"` when the user has opted out of pagination.
+ *
+ * @returns {number | "all"}
+ */
 export function getItemsPerPage() {
   const v = getPreference(PREFS_KEYS.itemsPerPage);
   if (v === "all") return "all";
@@ -47,14 +77,13 @@ export function getItemsPerPage() {
 // Settings dialog
 // ---------------------------------------------------------------------------
 
+/** Populate the settings dialog's model <select> from the server. */
 async function loadSettingsModels() {
   const select = document.getElementById("prefs-default-model");
   if (!select) return;
 
   try {
-    const response = await fetch("/models");
-    if (!response.ok) throw new Error("Failed to load models");
-    const data = await response.json();
+    const data = await fetchModels();
 
     const savedModel = getDefaultModel();
     select.innerHTML = "";
@@ -83,6 +112,7 @@ async function loadSettingsModels() {
   }
 }
 
+/** Seed the length <select> from the saved preference, if any. */
 function loadSettingsLength() {
   const select = document.getElementById("prefs-default-length");
   if (!select) return;
@@ -96,6 +126,7 @@ function loadSettingsLength() {
   // else leave the first option selected by default
 }
 
+/** Seed the items-per-page <select> from the saved preference. */
 function loadSettingsItemsPerPage() {
   const select = document.getElementById("prefs-items-per-page");
   if (!select) return;
@@ -106,23 +137,40 @@ function loadSettingsItemsPerPage() {
   }
 }
 
+/**
+ * Format a USD amount. Shows more precision when the total is small
+ * (<$1) so rounding isn't confusing.
+ *
+ * @param {number | null | undefined} n
+ * @returns {string}
+ */
 function formatUsd(n) {
   if (n === null || n === undefined || !Number.isFinite(Number(n))) return "—";
   const v = Number(n);
-  // Show more precision when the total is small (<$1) so rounding isn't confusing.
   return v >= 1 ? `${v.toFixed(2)}` : `${v.toFixed(4)}`;
 }
 
+/**
+ * Locale-format a count, or em-dash for nullish.
+ * @param {number | null | undefined} n
+ * @returns {string}
+ */
 function formatCount(n) {
   if (n === null || n === undefined) return "—";
   return Number(n).toLocaleString();
 }
 
+/**
+ * Safely assign textContent to an element by id.
+ * @param {string} id
+ * @param {string} value
+ */
 function setText(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
 }
 
+/** Populate the usage-stats block in the settings dialog. */
 async function loadSettingsStats() {
   setText("stats-total-cost", "…");
   setText("stats-total-summaries", "…");
@@ -130,9 +178,7 @@ async function loadSettingsStats() {
   setText("stats-priced-note", "");
 
   try {
-    const response = await fetch("/stats");
-    if (!response.ok) throw new Error("stats request failed");
-    const data = await response.json();
+    const data = await fetchStats();
 
     setText("stats-total-cost", formatUsd(data.total_cost_usd));
     setText("stats-total-summaries", formatCount(data.total_summaries));
@@ -166,6 +212,7 @@ async function loadSettingsStats() {
   }
 }
 
+/** Open the settings dialog, populating it with current values + stats. */
 export function openSettings() {
   loadSettingsModels();
   loadSettingsLength();
@@ -174,10 +221,17 @@ export function openSettings() {
   openModal("settings-dialog");
 }
 
+/** Close the settings dialog without saving. */
 export function closeSettings() {
   closeModal("settings-dialog");
 }
 
+/**
+ * Persist the settings form, apply to the homepage form in-place, and
+ * reload the homepage if `per_page` changed (so the server re-paginates).
+ *
+ * @param {Event} [e] - the submit event, if called from a form handler.
+ */
 export function saveSettings(e) {
   if (e && e.preventDefault) e.preventDefault();
 
@@ -228,9 +282,11 @@ export function saveSettings(e) {
   }
 }
 
-// On the homepage, if the URL doesn't already specify per_page, redirect once
-// using the saved (or default) items-per-page so the server applies pagination
-// consistently.
+/**
+ * On the homepage, if the URL doesn't already specify `per_page`, redirect
+ * once using the saved (or default) items-per-page so the server applies
+ * pagination consistently.
+ */
 export function initHomepagePerPageRedirect() {
   const onHome =
     window.location.pathname === "/" || window.location.pathname === "";

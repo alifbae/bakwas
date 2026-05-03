@@ -1,15 +1,31 @@
-// Detail page: render markdown summary, handle regenerate modal, and back button.
-// Server-rendered values (summary text, video URL, current model/length)
-// are injected via <script type="application/json"> tags and data-* attributes.
+/**
+ * @module pages/detail
+ *
+ * Detail-page controller: render the stored markdown summary, handle the
+ * "Regenerate" modal, and fire the regenerate request.
+ *
+ * Server-rendered values (summary text, video URL, current model/length)
+ * are injected via `<script type="application/json">` tags and `data-*`
+ * attributes on `#detail-meta`.
+ */
 
 import { openModal, closeModal } from "../modules/modal.js";
 import { readJsonScript, escapeHtml } from "../modules/dom.js";
+import { fetchModels, regenerateSummary } from "../modules/api.js";
 
+/**
+ * Render markdown into the `#summary-content` element. Falls back to
+ * escaped plain text if `marked` isn't available.
+ *
+ * @param {string | null | undefined} summaryText
+ */
 function renderSummary(summaryText) {
   const el = document.getElementById("summary-content");
   if (!el) return;
   try {
-    const html = window.marked ? window.marked.parse(summaryText) : escapeHtml(String(summaryText));
+    const html = window.marked
+      ? window.marked.parse(summaryText)
+      : escapeHtml(String(summaryText));
     el.innerHTML = html;
   } catch (e) {
     console.error("Error parsing summary:", e);
@@ -18,14 +34,17 @@ function renderSummary(summaryText) {
   }
 }
 
+/**
+ * Populate the regenerate modal's model <select> from `/models`. Selects
+ * the currently-used model (or the API-default) by default.
+ *
+ * @param {string} currentModel
+ */
 async function loadRegenerateModels(currentModel) {
   const modelSelect = document.getElementById("regenerate-model");
   if (!modelSelect) return;
   try {
-    const response = await fetch("/models");
-    if (!response.ok) throw new Error("Failed to load models");
-    const data = await response.json();
-
+    const data = await fetchModels();
     modelSelect.innerHTML = "";
     (data.models || []).forEach((model) => {
       const option = document.createElement("option");
@@ -41,6 +60,12 @@ async function loadRegenerateModels(currentModel) {
   }
 }
 
+/**
+ * Submit a regenerate request, show an inline success flash, then reload
+ * the page so the server-rendered header picks up the new metadata.
+ *
+ * @param {string} videoUrl
+ */
 async function submitRegenerate(videoUrl) {
   const summaryEl = document.getElementById("summary-content");
   const modelSelect = document.getElementById("regenerate-model");
@@ -53,32 +78,13 @@ async function submitRegenerate(videoUrl) {
   closeModal("regenerateModal");
   summaryEl.innerHTML = '<p aria-busy="true">Regenerating summary with AI...</p>';
 
-  const body = new URLSearchParams({
-    url: videoUrl,
-    model: selectedModel,
-    length: selectedLength,
-    force: "true",
-  });
-
   try {
-    const response = await fetch("/summarize", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: body.toString(),
+    const data = await regenerateSummary({
+      url: videoUrl,
+      model: selectedModel,
+      length: selectedLength,
+      force: true,
     });
-
-    if (!response.ok) {
-      let errMsg = "Unknown error";
-      try {
-        const errJson = await response.json();
-        errMsg = errJson.error || errMsg;
-      } catch (_) {
-        /* non-JSON body */
-      }
-      throw new Error(errMsg);
-    }
-
-    const data = await response.json();
     renderSummary(data.summary);
 
     const success = document.createElement("p");
@@ -97,11 +103,12 @@ async function submitRegenerate(videoUrl) {
   }
 }
 
+/** Wire the detail page: initial render + regenerate controls. */
 export function initDetailPage() {
   const summaryEl = document.getElementById("summary-content");
   if (!summaryEl) return;
 
-  // Initial summary render
+  // Initial summary render from the <script type="application/json"> blob.
   const initialSummary = readJsonScript("summary-data");
   if (initialSummary !== null) {
     renderSummary(initialSummary);
@@ -109,23 +116,21 @@ export function initDetailPage() {
     summaryEl.innerHTML = "<p><mark>No summary data available</mark></p>";
   }
 
-  // Server-provided values from <div id="detail-meta" data-*>
+  // Server-provided values from <div id="detail-meta" data-*>.
   const meta = document.getElementById("detail-meta");
   const currentModel = meta?.dataset.currentModel || "";
   const currentLength = meta?.dataset.currentLength || "short";
 
-  // Populate models and seed length
+  // Populate models and seed length.
   loadRegenerateModels(currentModel);
   const lengthSelect = document.getElementById("regenerate-length");
   if (lengthSelect) lengthSelect.value = currentLength;
 
-  // Open modal
   const regenerateBtn = document.getElementById("regenerateBtn");
   if (regenerateBtn) {
     regenerateBtn.addEventListener("click", () => openModal("regenerateModal"));
   }
 
-  // Confirm regeneration (force=true bypasses the cache)
   const confirmRegenerate = document.getElementById("confirmRegenerate");
   if (confirmRegenerate) {
     confirmRegenerate.addEventListener("click", () => {

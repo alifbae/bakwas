@@ -18,7 +18,8 @@
     <li>
       <button
         class="cmdk-trigger"
-        onclick="window.openCommandPalette && window.openCommandPalette()"
+        type="button"
+        data-action="open-command-palette"
         title="Open command palette (Ctrl/Cmd+K)"
         aria-label="Open command palette"
       >
@@ -29,7 +30,8 @@
     <li>
       <button
         class="theme-toggle outline nav-icon-btn"
-        onclick="openSettings()"
+        type="button"
+        data-action="open-settings"
         title="Settings"
         aria-label="Open settings"
       >
@@ -56,7 +58,8 @@
     <li>
       <button
         class="theme-toggle outline nav-icon-btn"
-        onclick="toggleTheme()"
+        type="button"
+        data-action="toggle-theme"
         title="Toggle Theme"
         aria-label="Toggle light and dark theme"
       >

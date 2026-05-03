@@ -63,6 +63,61 @@ block content %}
     <article id="result" style="display: none; margin-top: 1rem" aria-live="polite" aria-atomic="false"></article>
   </section>
 
+  {#
+    Inert <template> elements used by static/js/pages/index.js. Keeping markup
+    in HTML (and not in JS strings) lets Prettier/editors format it, keeps
+    accessibility audits straightforward, and avoids innerHTML + escapeHtml
+    gymnastics for dynamic text (assigned via textContent in JS).
+  #}
+  <template id="tpl-skeleton">
+    <div class="skeleton-summary" aria-busy="true" aria-label="Generating summary">
+      <div class="skeleton-line skeleton-line--title"></div>
+      <div class="skeleton-line skeleton-line--md"></div>
+      <div class="skeleton-line skeleton-line--lg"></div>
+      <div class="skeleton-line skeleton-line--md"></div>
+      <div class="skeleton-line skeleton-line--sm"></div>
+      <div class="skeleton-line skeleton-line--md"></div>
+      <div class="skeleton-line skeleton-line--xs"></div>
+      <div class="skeleton-summary__status">Extracting captions…</div>
+    </div>
+  </template>
+
+  <template id="tpl-url-preview">
+    <div class="url-preview">
+      <img alt="" class="url-preview__thumb" loading="lazy" data-field="thumb" />
+      <div class="url-preview__text">
+        <div class="url-preview__title" data-field="title">Loading…</div>
+        <div class="url-preview__meta" data-field="meta"></div>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-url-preview-error">
+    <div class="url-preview url-preview--error">
+      <div class="url-preview__text">
+        <div class="url-preview__title">Not a YouTube URL</div>
+        <div class="url-preview__meta" data-field="message"></div>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-summary-meta">
+    <header class="summary-meta">
+      <div><strong>Video:</strong> <span data-field="title"></span></div>
+      <div><strong>Creator:</strong> <span data-field="creator"></span></div>
+      <div><strong>Date:</strong> <span data-field="video_date"></span></div>
+      <div><strong>Length:</strong> <span data-field="summary_length"></span></div>
+      <div><strong>Model:</strong> <small data-field="model"></small></div>
+    </header>
+  </template>
+
+  <template id="tpl-summary-footer">
+    <footer>
+      <small data-field="summary"></small><br />
+      <small><em>Refresh page to see in table below</em></small>
+    </footer>
+  </template>
+
   <section>
     {% set effective_per_page = pagination.per_page if pagination.per_page else 'all' %}
     {% macro sort_header(label, key, classes="") -%}

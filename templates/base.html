@@ -30,14 +30,14 @@
     {% block content %}{% endblock %}
 
     {% set settings_footer %}
-      <button type="button" class="secondary outline" onclick="closeModal('settings-dialog')">Cancel</button>
+      <button type="button" class="secondary outline" data-action="close-modal">Cancel</button>
       <button type="submit">Save</button>
     {% endset %}
     {% call modal(
         id="settings-dialog",
         title="Settings",
         form_id="settings-form",
-        form_onsubmit="saveSettings(event); return false;",
+        form_action="save-settings",
         footer=settings_footer
     ) %}
       <label for="prefs-default-model">
@@ -83,7 +83,7 @@
     {% endcall %}
 
     {% set delete_footer %}
-      <button type="button" class="secondary outline" onclick="closeModal('confirm-delete-dialog')">Cancel</button>
+      <button type="button" class="secondary outline" data-action="close-modal">Cancel</button>
       <button type="button" class="danger" id="confirm-delete-btn">Delete</button>
     {% endset %}
     {% call modal(
@@ -98,16 +98,6 @@
 
     {% include "partials/footer.html" %}
 
-    {#
-      JS is loaded as ES modules. `main.js` is the single base-page entry
-      point; per-page modules are added via the `extra_scripts` block.
-
-      Note on cache-busting: `asset_version` is derived from the newest mtime
-      across static/js + static/css, so editing any module bumps the version
-      on this <script> tag. Browsers will re-fetch main.js and, transitively,
-      its imports. If a module import ever caches stale, a hard refresh fixes
-      it — a proper build step is the long-term answer.
-    #}
     <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script
       type="module"

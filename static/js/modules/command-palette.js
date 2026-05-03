@@ -1,30 +1,56 @@
-// Command palette (Cmd/Ctrl+K).
-// Fuzzy-search summaries by title and creator, plus built-in actions.
+/**
+ * @module command-palette
+ *
+ * Keyboard-driven command palette (Cmd/Ctrl+K).
+ *
+ * Combines a short list of built-in actions ("New summary", "Open settings",
+ * "Toggle theme") with a fuzzy-search over existing summaries loaded from
+ * `/search`. Built as a single lazy DOM overlay appended to `document.body`;
+ * keyboard shortcuts and arrow/Enter/Escape handling all live here.
+ */
 
 import { isMacPlatform, escapeHtml } from "./dom.js";
+import { fetchSearchIndex } from "./api.js";
+import { openSettings } from "./preferences.js";
+import { toggleTheme } from "./theme.js";
 
-let overlay = null;
-let input = null;
-let list = null;
-let items = []; // { title, subtitle, action, _haystack? }
+/**
+ * @typedef {object} PaletteItem
+ * @property {string} title
+ * @property {string} [subtitle]
+ * @property {() => void} action
+ * @property {string} [_haystack] - lowercased search text, cached per item.
+ */
+
+let overlay = /** @type {HTMLElement | null} */ (null);
+let input = /** @type {HTMLInputElement | null} */ (null);
+let list = /** @type {HTMLUListElement | null} */ (null);
+/** @type {PaletteItem[]} */
+let items = [];
+/** @type {PaletteItem[]} */
 let filtered = [];
 let selectedIndex = 0;
+
+/** @type {Array<{title: string, creator?: string, url: string}>} */
 let summaries = [];
 let summariesLoaded = false;
+/** @type {Promise<void> | null} */
 let summariesLoading = null;
 
+/** Open the palette overlay (idempotent). */
 export function openCommandPalette() {
   if (overlay) return;
   buildOverlay();
   document.body.appendChild(overlay);
   input.focus();
-  // Lazy-load summaries (cache for subsequent opens)
+  // Lazy-load summaries and cache them across opens.
   ensureSummariesLoaded().then(() => {
     refreshItems();
     renderList();
   });
 }
 
+/** Tear down the overlay and clear DOM references. */
 function closePalette() {
   if (!overlay) return;
   overlay.remove();
@@ -33,11 +59,15 @@ function closePalette() {
   list = null;
 }
 
+/**
+ * Load the search index if not already loaded. Subsequent calls reuse the
+ * cached promise so concurrent opens don't double-fetch.
+ * @returns {Promise<void>}
+ */
 function ensureSummariesLoaded() {
   if (summariesLoaded) return Promise.resolve();
   if (summariesLoading) return summariesLoading;
-  summariesLoading = fetch("/search")
-    .then((r) => (r.ok ? r.json() : { summaries: [] }))
+  summariesLoading = fetchSearchIndex()
     .then((data) => {
       summaries = data.summaries || [];
       summariesLoaded = true;
@@ -49,6 +79,7 @@ function ensureSummariesLoaded() {
   return summariesLoading;
 }
 
+/** Construct the DOM overlay (backdrop + panel + input + list + hint). */
 function buildOverlay() {
   overlay = document.createElement("div");
   overlay.className = "cmdk-backdrop";
@@ -96,7 +127,9 @@ function buildOverlay() {
   });
 }
 
+/** Rebuild the item list from built-ins + loaded summaries. */
 function refreshItems() {
+  /** @type {PaletteItem[]} */
   const builtins = [
     {
       title: "New summary",
@@ -108,7 +141,7 @@ function refreshItems() {
       subtitle: "Preferences and usage stats",
       action: () => {
         closePalette();
-        if (typeof window.openSettings === "function") window.openSettings();
+        openSettings();
       },
     },
     {
@@ -116,7 +149,7 @@ function refreshItems() {
       subtitle: "Light / dark",
       action: () => {
         closePalette();
-        if (typeof window.toggleTheme === "function") window.toggleTheme();
+        toggleTheme();
       },
     },
   ];
@@ -131,8 +164,14 @@ function refreshItems() {
   items = builtins.concat(summaryItems);
 }
 
-// Simple fuzzy match: every character of q must appear in order in text.
-// Scoring gives consecutive matches a boost so exact substrings float up.
+/**
+ * Simple fuzzy match: every character of `q` must appear in order in `text`.
+ * Consecutive matches score higher so exact substrings float to the top.
+ *
+ * @param {string} text
+ * @param {string} q
+ * @returns {number} 0 if no match, higher = better.
+ */
 function fuzzyScore(text, q) {
   if (!q) return 1;
   const t = text.toLowerCase();
@@ -147,6 +186,11 @@ function fuzzyScore(text, q) {
   return score;
 }
 
+/**
+ * Filter + sort the master items list by fuzzy score of the current query.
+ * @param {string} query
+ * @returns {PaletteItem[]}
+ */
 function filterItems(query) {
   const q = (query || "").trim().toLowerCase();
   if (!q) return items.slice(0, 50);
@@ -162,6 +206,7 @@ function filterItems(query) {
     .map((x) => x.item);
 }
 
+/** Re-render the list from the current query + selection. */
 function renderList() {
   if (!list) return;
   filtered = filterItems(input.value);
@@ -190,6 +235,7 @@ function renderList() {
   });
 }
 
+/** Sync aria-selected attributes to the current selectedIndex. */
 function updateSelection() {
   if (!list) return;
   [...list.children].forEach((child, i) => {
@@ -202,6 +248,10 @@ function updateSelection() {
   });
 }
 
+/**
+ * Dispatch an item's action and close the palette.
+ * @param {PaletteItem | undefined} item
+ */
 function run(item) {
   if (!item) return;
   const action = item.action;
@@ -209,6 +259,10 @@ function run(item) {
   if (typeof action === "function") action();
 }
 
+/**
+ * Input keydown handler: Esc closes, ArrowUp/Down navigates, Enter runs.
+ * @param {KeyboardEvent} e
+ */
 function onKeydown(e) {
   if (e.key === "Escape") {
     e.preventDefault();
@@ -233,8 +287,11 @@ function onKeydown(e) {
   }
 }
 
+/**
+ * Install the global Cmd/Ctrl+K shortcut and adjust the nav trigger's
+ * displayed modifier to match the user's platform.
+ */
 export function initCommandPalette() {
-  // Global keyboard shortcut (Cmd+K on macOS, Ctrl+K everywhere else)
   document.addEventListener("keydown", (e) => {
     const modifier = isMacPlatform() ? e.metaKey : e.ctrlKey;
     if (modifier && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "k") {

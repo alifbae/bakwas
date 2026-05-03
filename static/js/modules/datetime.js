@@ -1,7 +1,16 @@
-// Convert server-rendered UTC timestamps to the user's local time.
-// Templates mark up cells with data-utc-time / data-utc-date; we rewrite
-// textContent on init.
+/**
+ * @module datetime
+ *
+ * Convert server-rendered UTC timestamps to the user's local time.
+ * Templates mark up cells with `data-utc-time` / `data-utc-date`;
+ * `initDateTime()` rewrites their `textContent` on page load.
+ */
 
+/**
+ * Format a UTC timestamp as a localized date-time string.
+ * @param {string} utcDateString - e.g. `"2025-04-01 12:34:56"` (no timezone).
+ * @returns {string}
+ */
 export function formatLocalDateTime(utcDateString) {
   if (!utcDateString) return "N/A";
   try {
@@ -18,6 +27,11 @@ export function formatLocalDateTime(utcDateString) {
   }
 }
 
+/**
+ * Format a UTC timestamp as a localized date-only string.
+ * @param {string} utcDateString
+ * @returns {string}
+ */
 export function formatLocalDate(utcDateString) {
   if (!utcDateString) return "N/A";
   try {
@@ -32,6 +46,10 @@ export function formatLocalDate(utcDateString) {
   }
 }
 
+/**
+ * Scan the document for `[data-utc-time]` / `[data-utc-date]` elements and
+ * rewrite their `textContent` to the user's locale.
+ */
 export function initDateTime() {
   document.querySelectorAll("[data-utc-time]").forEach((el) => {
     const utc = el.getAttribute("data-utc-time");

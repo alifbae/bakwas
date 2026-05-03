@@ -12,6 +12,9 @@
       openModal('my-dialog')
       closeModal('my-dialog')
 
+  Close-buttons inside the dialog only need `data-action="close-modal"` —
+  the delegated handler in main.js finds the enclosing <dialog> by id.
+
   Parameters:
     id        (required) Unique DOM id for the <dialog>.
     title     (optional) Header label. Omit to hide the header.
@@ -21,10 +24,11 @@
               If omitted, no footer is rendered.
     form_id   (optional) If provided, wraps the body (and footer) in a <form>
               element with this id. Useful for dialogs that submit data.
-    form_onsubmit (optional) JS expression for the form's onsubmit handler.
+    form_action (optional) A data-form-action value wired via registerFormAction
+              in JS. Prefer this over custom submit handlers.
 #}
 
-{% macro modal(id, title=None, size=None, close_on_backdrop=True, footer=None, form_id=None, form_onsubmit=None) %}
+{% macro modal(id, title=None, size=None, close_on_backdrop=True, footer=None, form_id=None, form_action=None) %}
 <dialog
   id="{{ id }}"
   class="app-modal{% if size %} app-modal--{{ size }}{% endif %}"
@@ -38,14 +42,14 @@
       <button
         aria-label="Close"
         class="app-modal__close"
-        onclick="closeModal('{{ id }}')"
+        data-action="close-modal"
         type="button"
       >&times;</button>
     </header>
     {% endif %}
 
     {% if form_id %}
-    <form id="{{ form_id }}"{% if form_onsubmit %} onsubmit="{{ form_onsubmit }}"{% endif %}>
+    <form id="{{ form_id }}"{% if form_action %} data-form-action="{{ form_action }}"{% endif %}>
       {{ caller() }}
       {% if footer %}
       <footer>
