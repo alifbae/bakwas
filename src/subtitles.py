@@ -122,7 +122,7 @@ def get_video_info(url):
             for caption in captions:
                 if caption["ext"] == "vtt":
                     response = requests.get(caption["url"])
-                    metadata["captions"] = clean_vtt(response.text)
+                    metadata["captions"] = clean_vtt_with_timestamps(response.text)
                     return metadata
 
         # Fallback to manual captions
@@ -131,53 +131,125 @@ def get_video_info(url):
             for caption in captions:
                 if caption["ext"] == "vtt":
                     response = requests.get(caption["url"])
-                    metadata["captions"] = clean_vtt(response.text)
+                    metadata["captions"] = clean_vtt_with_timestamps(response.text)
                     return metadata
 
     return metadata
 
 
-def clean_vtt(vtt_text):
-    """Remove VTT formatting and timing tags, keep just text, and deduplicate"""
+def _format_timestamp(seconds):
+    """Format a second count as MM:SS or H:MM:SS, matching YouTube's `&t=` conventions."""
+    total = int(seconds)
+    h, rem = divmod(total, 3600)
+    m, s = divmod(rem, 60)
+    if h:
+        return f"{h}:{m:02d}:{s:02d}"
+    return f"{m:02d}:{s:02d}"
+
+
+def _parse_vtt_timestamp(ts):
+    """Parse an HH:MM:SS.mmm VTT timestamp into float seconds. Returns None on failure."""
+    try:
+        # VTT uses HH:MM:SS.mmm. Some files omit the hour.
+        parts = ts.strip().split(":")
+        if len(parts) == 3:
+            h, m, s = parts
+            return int(h) * 3600 + int(m) * 60 + float(s)
+        if len(parts) == 2:
+            m, s = parts
+            return int(m) * 60 + float(s)
+    except (ValueError, AttributeError):
+        return None
+    return None
+
+
+def clean_vtt_with_timestamps(vtt_text, downsample_seconds=15):
+    """
+    Parse a VTT caption file into newline-separated `[MM:SS] text` cues.
+
+    Downsamples so at most one cue per `downsample_seconds` window survives;
+    cues inside the same window get merged into the first cue's line. This
+    keeps the LLM input short while preserving navigation granularity good
+    enough for "where was this talked about" clicks.
+
+    Preserves dedup so auto-generated captions don't produce an endless
+    stream of repeated words.
+
+    Returns a string shaped like:
+        [00:00] Welcome to the video
+        [00:15] First we'll talk about X
+        [02:30] Here's the second topic
+    """
     lines = vtt_text.split("\n")
-    text_lines = []
-    seen_lines = set()
+    cues = []  # list of (start_seconds, text)
+    current_start = None
+    current_text_parts = []
+
+    def _flush_current():
+        if current_start is None:
+            return
+        text = " ".join(current_text_parts).strip()
+        text = re.sub(r"<[\d:.]+>", "", text)
+        text = re.sub(r"<[^>]+>", "", text).strip()
+        if text:
+            cues.append((current_start, text))
 
     for line in lines:
         line = line.strip()
-        # Skip VTT headers, timestamps, empty lines, and note lines
+        if not line:
+            _flush_current()
+            current_start = None
+            current_text_parts = []
+            continue
+
         if (
-            line
-            and not line.startswith("WEBVTT")
-            and not line.startswith("Kind:")
-            and not line.startswith("Language:")
-            and not line.startswith("NOTE")
-            and not "-->" in line
-            and not line.isdigit()
+            line.startswith("WEBVTT")
+            or line.startswith("Kind:")
+            or line.startswith("Language:")
+            or line.startswith("NOTE")
+            or line.isdigit()
         ):
+            continue
 
-            # Remove timing tags like <00:00:00.480>
-            line = re.sub(r"<[\d:.]+>", "", line)
-            # Remove other XML-like tags
-            line = re.sub(r"<[^>]+>", "", line)
+        if "-->" in line:
+            # Cue timing line: "HH:MM:SS.mmm --> HH:MM:SS.mmm ..."
+            _flush_current()
+            start_str = line.split("-->")[0].strip().split()[0]
+            current_start = _parse_vtt_timestamp(start_str)
+            current_text_parts = []
+            continue
 
-            cleaned_line = line.strip()
-            # Only add if not seen before (deduplication)
-            if cleaned_line and cleaned_line not in seen_lines:
-                text_lines.append(cleaned_line)
-                seen_lines.add(cleaned_line)
+        if current_start is not None:
+            current_text_parts.append(line)
 
-    # Join and remove any repeated words that might span across lines
-    full_text = " ".join(text_lines)
+    # Trailing cue without a blank line at EOF
+    _flush_current()
 
-    # Remove consecutive duplicate words
-    words = full_text.split()
-    deduped_words = []
-    prev_word = None
+    # Downsample: keep the first cue in each N-second window and merge any
+    # subsequent cues' unique text into it, then dedupe consecutive words.
+    bucketed = []
+    seen_texts = set()
+    last_bucket = None
+    for start, text in cues:
+        if text in seen_texts:
+            continue
+        seen_texts.add(text)
+        bucket = int(start // downsample_seconds)
+        if bucketed and bucket == last_bucket:
+            bucketed[-1] = (bucketed[-1][0], bucketed[-1][1] + " " + text)
+        else:
+            bucketed.append((start, text))
+            last_bucket = bucket
 
-    for word in words:
-        if word != prev_word:
-            deduped_words.append(word)
-            prev_word = word
+    formatted = []
+    for start, text in bucketed:
+        words = text.split()
+        deduped = []
+        prev = None
+        for w in words:
+            if w != prev:
+                deduped.append(w)
+                prev = w
+        formatted.append(f"[{_format_timestamp(start)}] {' '.join(deduped)}")
 
-    return " ".join(deduped_words)
+    return "\n".join(formatted)

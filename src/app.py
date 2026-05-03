@@ -318,7 +318,13 @@ def summarize():
             return jsonify({"error": "No captions found"}), 404
 
         # Summarize
-        result = summarize_text(video_info["captions"], model=model, length=length)
+        video_id = extract_video_id(canonical_url)
+        result = summarize_text(
+            video_info["captions"],
+            model=model,
+            length=length,
+            video_id=video_id,
+        )
         summary_text = result["summary"]
         prompt_tokens = result.get("prompt_tokens")
         completion_tokens = result.get("completion_tokens")
@@ -491,7 +497,10 @@ def summarize_stream():
 
         try:
             for event in summarize_text_stream(
-                video_info["captions"], model=model, length=length
+                video_info["captions"],
+                model=model,
+                length=length,
+                video_id=extract_video_id(canonical_url),
             ):
                 if event["type"] == "chunk":
                     yield sse("chunk", {"content": event["content"]})

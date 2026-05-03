@@ -9,12 +9,49 @@ the homepage, models list, stats, search) doesn't carry its ~150 MB
 footprint in memory.
 """
 
+import re
+
 from src.providers import Provider, resolve
 from src.utils import is_debug_mode
 
 
 # Flag so we only toggle litellm.set_verbose once per process lifetime.
 _LITELLM_CONFIGURED = False
+
+# Matches [MM:SS] or [H:MM:SS] / [HH:MM:SS]. Deliberately strict: the regex
+# fixes the URL we substitute, so no user/LLM-supplied text reaches the
+# anchor href as-is.
+_TIMESTAMP_RE = re.compile(r"\[(\d{1,2}:\d{2}(?::\d{2})?)\]")
+
+
+def _timestamp_to_seconds(label: str) -> int:
+    """Convert 'MM:SS' or 'HH:MM:SS' (zero-padded or not) to seconds."""
+    parts = label.split(":")
+    if len(parts) == 2:
+        m, s = parts
+        return int(m) * 60 + int(s)
+    h, m, s = parts
+    return int(h) * 3600 + int(m) * 60 + int(s)
+
+
+def linkify_timestamps(summary: str, video_id: str | None) -> str:
+    """
+    Replace `[MM:SS]` / `[H:MM:SS]` markers with clickable markdown links
+    pointing at the corresponding moment of the YouTube video.
+
+    Returns `summary` unchanged if `video_id` is falsy.
+    """
+    if not summary or not video_id:
+        return summary
+
+    def replace(match: re.Match) -> str:
+        label = match.group(1)
+        seconds = _timestamp_to_seconds(label)
+        # We build the URL from a strict regex capture + an int, so nothing
+        # from the LLM output reaches the href verbatim.
+        return f"[[{label}]](https://youtu.be/{video_id}?t={seconds}s)"
+
+    return _TIMESTAMP_RE.sub(replace, summary)
 
 
 def _load_litellm():
@@ -37,7 +74,7 @@ def _load_litellm():
 def get_prompt_template(length, text):
     """Get the appropriate prompt template based on desired length."""
     # Truncate text to avoid token limits (increased for longer videos)
-    truncated_text = text[:50000]
+    truncated_text = text[:60000]
 
     prompts = {
         "concise": f"""Create a concise bullet-point summary of this YouTube video.
@@ -49,7 +86,12 @@ Format your response as:
 - Keep bullets focused and easy to scan
 - No headings, just bullets
 
-Transcript:
+Timestamps:
+- End each bullet with a timestamp `[MM:SS]` (or `[H:MM:SS]` for videos over an hour) pointing to where that idea is discussed.
+- Only use timestamps that literally appear in the transcript below; never invent one.
+- If a bullet spans the whole video, use the timestamp where it is first introduced.
+
+Transcript (prefixed with [MM:SS] markers):
 {truncated_text}""",
         "comprehensive": f"""Provide a comprehensive summary of this YouTube video in 2-4 well-structured paragraphs.
 
@@ -60,7 +102,12 @@ Guidelines:
 - Focus on the main ideas, key takeaways, and important context
 - Include proper paragraph breaks for readability
 
-Transcript:
+Timestamps:
+- When a sentence describes a specific moment, suffix it with a `[MM:SS]` marker (or `[H:MM:SS]` for videos over an hour) pointing to where in the transcript that moment occurs.
+- Only use timestamps that literally appear in the transcript below; never invent one.
+- Sprinkle them throughout rather than clustering — aim for 3 to 6 per paragraph.
+
+Transcript (prefixed with [MM:SS] markers):
 {truncated_text}""",
     }
 
@@ -127,13 +174,16 @@ def _cost_from_tokens(cost_per_token, model: str, prompt_tokens: int, completion
         return None
 
 
-def summarize_text(text, model, length="comprehensive"):
+def summarize_text(text, model, length="comprehensive", video_id=None):
     """
     Send the transcript to the configured LLM and return a dict with:
-        summary           - the generated text
+        summary           - the generated text (with linkified timestamps)
         prompt_tokens     - input tokens (int or None)
         completion_tokens - output tokens (int or None)
         cost_usd          - USD cost per LiteLLM pricing (float or None)
+
+    If `video_id` is supplied, any `[MM:SS]` / `[H:MM:SS]` markers the model
+    emits are rewritten into clickable YouTube links via `linkify_timestamps`.
     """
     if not model:
         raise ValueError("A model id is required. Configure providers in config/providers.yaml.")
@@ -160,6 +210,7 @@ def summarize_text(text, model, length="comprehensive"):
             raise Exception("API response structure is invalid")
 
         summary_text = response.choices[0].message.content
+        summary_text = linkify_timestamps(summary_text, video_id)
         prompt_tokens, completion_tokens = _extract_usage(response)
         cost_usd = _extract_cost(response, completion_cost)
 
@@ -181,7 +232,7 @@ def summarize_text(text, model, length="comprehensive"):
         raise Exception(error_msg)
 
 
-def summarize_text_stream(text, model, length="comprehensive"):
+def summarize_text_stream(text, model, length="comprehensive", video_id=None):
     """
     Generator version of summarize_text for Server-Sent Events.
 
@@ -192,6 +243,10 @@ def summarize_text_stream(text, model, length="comprehensive"):
          "completion_tokens": int | None,
          "cost_usd": float | None}                final event with totals
         {"type": "error", "error": "..."}         on failure
+
+    If `video_id` is supplied, `[MM:SS]` / `[H:MM:SS]` markers are rewritten
+    into clickable YouTube links before each chunk leaves the server. A small
+    trailing buffer ensures markers aren't split across chunks.
 
     The caller is responsible for persisting the final summary.
     """
@@ -207,6 +262,28 @@ def summarize_text_stream(text, model, length="comprehensive"):
 
     chunks: list[str] = []
     final_response = None
+    pending = ""  # trailing buffer so [MM:SS] markers survive chunk splits
+
+    # Longest possible timestamp marker is "[HH:MM:SS]" = 10 chars. Hold
+    # back a little extra to cover weird provider chunk boundaries.
+    HOLDBACK = 12
+
+    def _drain(tail: str, force: bool) -> tuple[str, str]:
+        """
+        Split `tail` into (ready_to_ship, still_buffered).
+
+        `force=True` means the stream is ending — emit everything.
+        Otherwise we keep the last HOLDBACK chars buffered so a timestamp
+        marker straddling a chunk boundary can still be linkified in one go.
+        """
+        if force or len(tail) <= HOLDBACK:
+            return tail, ""
+        # Prefer to split at whitespace so we don't cut in the middle of a word.
+        split_at = len(tail) - HOLDBACK
+        space_idx = tail.rfind(" ", 0, split_at)
+        if space_idx > 0:
+            split_at = space_idx
+        return tail[:split_at], tail[split_at:]
 
     try:
         stream = completion(
@@ -225,11 +302,25 @@ def summarize_text_stream(text, model, length="comprehensive"):
                 content = getattr(delta, "content", None)
                 if content:
                     chunks.append(content)
-                    yield {"type": "chunk", "content": content}
+                    pending += content
+                    ready, pending = _drain(pending, force=False)
+                    if ready:
+                        yield {
+                            "type": "chunk",
+                            "content": linkify_timestamps(ready, video_id),
+                        }
             except (AttributeError, IndexError):
                 continue
 
-        full_summary = "".join(chunks)
+        # Flush whatever is still buffered.
+        if pending:
+            yield {
+                "type": "chunk",
+                "content": linkify_timestamps(pending, video_id),
+            }
+            pending = ""
+
+        full_summary = linkify_timestamps("".join(chunks), video_id)
         prompt_tokens, completion_tokens = _extract_usage(final_response)
         cost_usd = _extract_cost(final_response, completion_cost)
 

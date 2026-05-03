@@ -14,6 +14,24 @@
 import { marked } from "https://cdn.jsdelivr.net/npm/marked@18/+esm";
 import { escapeHtml } from "./dom.js";
 
+// Open YouTube timestamp links in a new tab so users don't lose the
+// summary they're reading. All other links keep marked's defaults.
+const YOUTUBE_HOST_RE = /^https?:\/\/(www\.)?(youtu\.be|youtube\.com|m\.youtube\.com)\//i;
+
+marked.use({
+  renderer: {
+    link({ href, title, tokens }) {
+      const text = this.parser.parseInline(tokens);
+      const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
+      const safeHref = escapeHtml(href);
+      const targetAttrs = YOUTUBE_HOST_RE.test(href)
+        ? ' target="_blank" rel="noopener noreferrer"'
+        : "";
+      return `<a href="${safeHref}"${titleAttr}${targetAttrs}>${text}</a>`;
+    },
+  },
+});
+
 /**
  * Render markdown text to HTML. On null/undefined input returns an empty
  * string; on parse failure falls back to the HTML-escaped source so the

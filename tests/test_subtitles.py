@@ -2,7 +2,6 @@
 
 from src.subtitles import (
     canonicalize_youtube_url,
-    clean_vtt,
     extract_video_id,
     validate_youtube_url,
 )
@@ -47,22 +46,3 @@ class TestValidateYoutubeUrl:
 
     def test_rejects_other_domains(self):
         assert not validate_youtube_url("https://evil.example.com/")
-
-
-class TestCleanVtt:
-    def test_strips_headers_timestamps_and_dedupes(self):
-        vtt = (
-            "WEBVTT\n"
-            "Kind: captions\n"
-            "Language: en\n\n"
-            "00:00:00.000 --> 00:00:02.000\n"
-            "<00:00:00.480>Hello<00:00:01.000> world\n\n"
-            "00:00:02.000 --> 00:00:04.000\n"
-            "Hello world\n"  # duplicate — should be skipped
-        )
-        result = clean_vtt(vtt)
-        assert "Hello world" in result
-        # Each word should appear once thanks to dedupe.
-        assert result.count("Hello world") == 1
-        assert "WEBVTT" not in result
-        assert "-->" not in result
