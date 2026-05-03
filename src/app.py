@@ -436,6 +436,7 @@ def summarize_stream():
 
         if cached:
             caption_length = len((cached.get("subtitles") or "").split())
+            summary_url = url_for("view_summary", summary_id=cached["id"])
             yield sse(
                 "meta",
                 {
@@ -446,6 +447,7 @@ def summarize_stream():
                     "model_used": cached.get("model_used") or model,
                     "summary_length": cached.get("summary_length") or length,
                     "cached": True,
+                    "summary_url": summary_url,
                 },
             )
             yield sse("chunk", {"content": cached["summary"]})
@@ -457,6 +459,7 @@ def summarize_stream():
                     "completion_tokens": cached.get("completion_tokens"),
                     "cost_usd": cached.get("cost_usd"),
                     "cached": True,
+                    "summary_url": summary_url,
                 },
             )
             return
@@ -520,6 +523,7 @@ def summarize_stream():
             return
 
         # Persist the final summary before sending the done event.
+        summary_url = None
         try:
             save_summary(
                 url=canonical_url,
@@ -535,6 +539,10 @@ def summarize_stream():
                 cost_usd=cost_usd,
                 duration_seconds=video_info.get("duration_seconds"),
             )
+            # Re-read the saved row to get its id for the detail-page link.
+            saved = get_cached_summary(canonical_url, model, length)
+            if saved:
+                summary_url = url_for("view_summary", summary_id=saved["id"])
         except Exception as exc:
             print(f"Error saving streamed summary: {exc}")
 
@@ -546,6 +554,7 @@ def summarize_stream():
                 "completion_tokens": completion_tokens,
                 "cost_usd": cost_usd,
                 "cached": False,
+                "summary_url": summary_url,
             },
         )
 

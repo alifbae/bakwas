@@ -329,22 +329,29 @@ article header:has(h2) button {
   white-space: nowrap;
 }
 
-/* Result summary metadata - vertical, left-aligned list of properties */
+/* Result summary header - just the video title as a link to the detail page. */
 .summary-meta {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.25rem;
-  text-align: left;
+  margin-bottom: 0.75rem;
 }
 
-.summary-meta > div {
-  width: 100%;
-  line-height: 1.5;
+.summary-meta__title {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.35;
 }
 
-.summary-meta strong {
-  margin-right: 0.35rem;
+.summary-meta__title-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.summary-meta__title-link:hover,
+.summary-meta__title-link:focus-visible {
+  text-decoration: underline;
+  color: var(--pico-primary);
 }
 
 /* Markdown content enhancements */
@@ -1346,8 +1353,10 @@ main figure {
   overflow-wrap: anywhere;
 }
 
-/* Thumbnail on the left, bounded to a sensible size but still stretches to
-   match the metadata column's height when the metadata is tall enough. */
+/* Thumbnail on the left. Locked to 16:9 (no cropping) and sized so its
+   height matches the metadata column's height — the width is derived from
+   that height via `aspect-ratio`, so the two columns stay visually balanced
+   regardless of how many metadata rows are shown. */
 .summary-header__thumb-link {
   flex-shrink: 0;
   display: flex;
@@ -1356,8 +1365,13 @@ main figure {
   border-radius: 10px;
   overflow: hidden;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
-  width: clamp(280px, 30vw, 420px);
+  aspect-ratio: 16 / 9;
   align-self: stretch;
+  /* Keep the image within sane horizontal bounds on very short metadata
+     (avoid a 100px-tall thumbnail) and on very tall metadata (avoid one
+     that dominates the page). */
+  min-width: 280px;
+  max-width: min(480px, 50vw);
 }
 
 .summary-header__thumb-link:hover {
@@ -1385,11 +1399,6 @@ main figure {
     width: 100%;
     max-width: 480px;
     align-self: auto;
-  }
-
-  .summary-header__thumb {
-    aspect-ratio: 16 / 9;
-    height: auto;
   }
 }
 

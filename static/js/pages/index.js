@@ -115,23 +115,36 @@ function updateSkeletonStatus(resultEl, message) {
 }
 
 /**
- * Build a `<header>` element summarizing the video being processed.
+ * Build a `<header>` with the video title. If `meta.summary_url` is present
+ * (cache hit path), the title is rendered as a link. Otherwise it's plain
+ * text, and `upgradeHeaderLink` can upgrade it once the stream ends.
+ *
  * @param {object} meta - SSE `meta` event payload.
  * @returns {HTMLElement}
  */
 function renderMetaHeader(meta) {
-  const modelName = (meta.model_used || "").split("/")[1] || meta.model_used;
   const frag = cloneTemplate("tpl-summary-meta");
-  fillFields(frag, {
-    title: meta.title || "",
-    creator: meta.creator || "",
-    video_date: meta.video_date || "",
-    summary_length: meta.summary_length || "",
-    model: modelName || "",
-  });
-  // <template> fragments are DocumentFragments; return the single root element
-  // so the caller has something to position relative to siblings.
-  return frag.firstElementChild;
+  fillFields(frag, { title: meta.title || "" });
+  const root = frag.firstElementChild;
+  if (meta.summary_url) {
+    const link = root.querySelector('[data-field="title-link"]');
+    if (link) link.href = meta.summary_url;
+  }
+  return root;
+}
+
+/**
+ * Once a `done` event arrives with `summary_url`, point the header title
+ * at the detail page so users can navigate without a full-page refresh.
+ * No-op if the URL is missing or the header hasn't been rendered yet.
+ *
+ * @param {HTMLElement} headerEl
+ * @param {string | null | undefined} summaryUrl
+ */
+function upgradeHeaderLink(headerEl, summaryUrl) {
+  if (!headerEl || !summaryUrl) return;
+  const link = headerEl.querySelector('[data-field="title-link"]');
+  if (link) link.href = summaryUrl;
 }
 
 /**
@@ -259,6 +272,7 @@ function buildStreamHandlers(resultDiv) {
   let fullText = "";
   let firstChunkReceived = false;
   let liveContent = null;
+  let headerEl = null;
 
   return {
     onMeta: (data) => {
@@ -271,9 +285,10 @@ function buildStreamHandlers(resultDiv) {
       if (!firstChunkReceived) {
         firstChunkReceived = true;
         resultDiv.replaceChildren();
+        headerEl = renderMetaHeader(meta || {});
         liveContent = document.createElement("div");
         liveContent.className = "markdown-content";
-        resultDiv.append(renderMetaHeader(meta || {}), liveContent);
+        resultDiv.append(headerEl, liveContent);
       }
       fullText += data.content || "";
       // Re-render the full markdown each tick. For summaries of the size
@@ -285,6 +300,9 @@ function buildStreamHandlers(resultDiv) {
       if (!firstChunkReceived) {
         // Empty stream (shouldn't happen) — fall back to plain render.
         resultDiv.replaceChildren();
+      } else {
+        // Backfill the title's href now that the row is saved.
+        upgradeHeaderLink(headerEl, data?.summary_url);
       }
       resultDiv.appendChild(renderFooter(meta, data || {}));
       toast(data?.cached ? "Loaded from cache" : "Summary saved", {

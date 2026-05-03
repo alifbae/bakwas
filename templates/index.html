@@ -103,18 +103,17 @@ block content %}
 
   <template id="tpl-summary-meta">
     <header class="summary-meta">
-      <div><strong>Video:</strong> <span data-field="title"></span></div>
-      <div><strong>Creator:</strong> <span data-field="creator"></span></div>
-      <div><strong>Date:</strong> <span data-field="video_date"></span></div>
-      <div><strong>Length:</strong> <span data-field="summary_length"></span></div>
-      <div><strong>Model:</strong> <small data-field="model"></small></div>
+      <h3 class="summary-meta__title">
+        <a data-field="title-link" href="#" class="summary-meta__title-link">
+          <span data-field="title"></span>
+        </a>
+      </h3>
     </header>
   </template>
 
   <template id="tpl-summary-footer">
     <footer>
-      <small data-field="summary"></small><br />
-      <small><em>Refresh page to see in table below</em></small>
+      <small data-field="summary"></small>
     </footer>
   </template>
 
