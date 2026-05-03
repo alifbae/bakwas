@@ -11,6 +11,8 @@
  *   onError: (data) => { ... },
  *   onEvent: (name, data) => { ... },  // optional catch-all
  * });
+ *
+ * Consumers: modules/api.js (streamSummarize).
  */
 
 /**

@@ -5,6 +5,9 @@
  * request shape, and error handling. Every function throws on non-2xx
  * responses with a message extracted from the JSON body when possible,
  * so callers only need one `try/catch`.
+ *
+ * Depends on: sse.js (stream consumer).
+ * Consumers: pages/index.js, pages/detail.js, modules/preferences.js, modules/command-palette.js.
  */
 
 import { consumeEventStream } from "./sse.js";

@@ -3,6 +3,8 @@
  *
  * YouTube URL parsing and oEmbed metadata fetch. Pure functions plus one
  * network helper. No DOM knowledge.
+ *
+ * Consumers: pages/index.js.
  */
 
 /**

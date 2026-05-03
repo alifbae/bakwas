@@ -3,9 +3,16 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
 
-# Use data directory if it exists (for Docker), otherwise current directory
-DATA_DIR = "data" if os.path.exists("data") else "."
-DATABASE_PATH = os.path.join(DATA_DIR, "summaries.db")
+# DATABASE_PATH resolution:
+#   1. BAKWAS_DB_PATH env var (tests override to a temp file; ":memory:" is also valid)
+#   2. ./data/summaries.db if a `data/` dir exists (Docker volume layout)
+#   3. ./summaries.db (local dev default)
+_ENV_PATH = os.getenv("BAKWAS_DB_PATH")
+if _ENV_PATH:
+    DATABASE_PATH = _ENV_PATH
+else:
+    DATA_DIR = "data" if os.path.exists("data") else "."
+    DATABASE_PATH = os.path.join(DATA_DIR, "summaries.db")
 
 
 @contextmanager

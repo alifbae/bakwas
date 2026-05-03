@@ -3,6 +3,8 @@
  *
  * Small DOM / environment helpers shared across modules. Everything here
  * is pure enough to be testable in isolation.
+ *
+ * Consumers: modules/command-palette.js, pages/index.js, pages/detail.js.
  */
 
 /**

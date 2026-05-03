@@ -4,6 +4,8 @@
  * Convert server-rendered UTC timestamps to the user's local time.
  * Templates mark up cells with `data-utc-time` / `data-utc-date`;
  * `initDateTime()` rewrites their `textContent` on page load.
+ *
+ * Consumers: main.js.
  */
 
 /**

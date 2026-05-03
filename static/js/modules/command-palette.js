@@ -7,6 +7,9 @@
  * "Toggle theme") with a fuzzy-search over existing summaries loaded from
  * `/search`. Built as a single lazy DOM overlay appended to `document.body`;
  * keyboard shortcuts and arrow/Enter/Escape handling all live here.
+ *
+ * Depends on: dom.js, api.js, preferences.js, theme.js.
+ * Consumers: main.js (initCommandPalette + open-command-palette action).
  */
 
 import { isMacPlatform, escapeHtml } from "./dom.js";

@@ -8,6 +8,8 @@
  * Usage:
  *     import { toast } from "./toast.js";
  *     toast("Saved!", { type: "success" });
+ *
+ * Consumers: main.js, modules/preferences.js, pages/index.js, pages/detail.js (via window.toast fallback).
  */
 
 const CONTAINER_ID = "toast-container";

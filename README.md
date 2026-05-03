@@ -41,6 +41,8 @@ Comprehensive docs are at **[docs.bakwas.alifbae.dev](https://docs.bakwas.alifba
 - [Rate limiting](https://docs.bakwas.alifbae.dev/configuration/rate-limiting/)
 - [Reverse proxy setup](https://docs.bakwas.alifbae.dev/operations/reverse-proxy/)
 - [Troubleshooting](https://docs.bakwas.alifbae.dev/operations/troubleshooting/)
+- [Development workflow](https://docs.bakwas.alifbae.dev/development/)
+- [Architecture reference](https://docs.bakwas.alifbae.dev/reference/architecture/)
 
 ## License
 

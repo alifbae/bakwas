@@ -41,3 +41,7 @@ config/providers.local.yaml
 
 # MkDocs build output
 docs/site/
+
+# Node / vitest
+node_modules/
+coverage/

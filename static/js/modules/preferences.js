@@ -13,6 +13,9 @@
  *   - `openSettings` / `saveSettings` for the settings dialog.
  *   - `initHomepagePerPageRedirect` which syncs the URL `per_page` query
  *     param to the saved preference on first homepage load.
+ *
+ * Depends on: modal.js, toast.js, api.js.
+ * Consumers: main.js, modules/command-palette.js, pages/index.js.
  */
 
 import { openModal, closeModal } from "./modal.js";

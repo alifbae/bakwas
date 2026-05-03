@@ -3,6 +3,8 @@
  *
  * Light / dark theme toggle backed by the Pico.css `data-theme` attribute.
  * Persists the chosen theme to `localStorage` under the `"theme"` key.
+ *
+ * Consumers: main.js (initTheme + toggle-theme action), modules/command-palette.js.
  */
 
 const STORAGE_KEY = "theme";

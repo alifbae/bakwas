@@ -12,6 +12,9 @@
  *       <button type="submit" data-confirm-delete
  *               data-confirm-message="Optional custom message"> … </button>
  *     </form>
+ *
+ * Depends on: modal.js.
+ * Consumers: main.js (initDeleteConfirm).
  */
 
 import { openModal, closeModal } from "./modal.js";

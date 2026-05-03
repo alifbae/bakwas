@@ -85,5 +85,6 @@ nav:
       - Reverse proxy: operations/reverse-proxy.md
       - Monitoring: operations/monitoring.md
       - Troubleshooting: operations/troubleshooting.md
+  - Development: development/index.md
   - Reference:
-      - Project layout: reference/project-layout.md
+      - Architecture: reference/architecture.md

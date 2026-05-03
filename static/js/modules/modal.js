@@ -3,6 +3,8 @@
  *
  * Helpers for `<dialog>` elements rendered by `templates/partials/modal.html`.
  * Uses the native HTML dialog API with attribute fallback for older engines.
+ *
+ * Consumers: main.js, modules/delete-confirm.js, modules/preferences.js, pages/detail.js.
  */
 
 /**

@@ -14,6 +14,8 @@
  * JS registers named handlers once at startup; the single delegated click
  * and submit listeners fire the right one. This keeps modules free of
  * globals and makes "where is this button wired?" grep-able.
+ *
+ * Consumers: main.js (registers actions on startup).
  */
 
 const clickActions = new Map();
